@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/aula/:id",
+      "destination": "/index.html"
+    }
+  ]
+}
