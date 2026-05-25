@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Casos de Uso – Engenharia de Software · UDESC</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.31.0/iconfont/tabler-icons.min.css"/>
+<style>
+:root {
+  --primary: #185fa5;
+  --primary-light: #e8f0f9;
+  --green: #1d9e75;
+  --green-light: #e6f6f1;
+  --amber: #ba7517;
+  --amber-bg: #faeeda;
+  --red: #e24b4a;
+  --red-light: #fdf0f0;
+  --gray-50: #f8f9fa;
+  --gray-100: #f1f3f5;
+  --gray-200: #e9ecef;
+  --gray-400: #adb5bd;
+  --gray-600: #6c757d;
+  --gray-800: #343a40;
+  --gray-900: #212529;
+  --text: #212529;
+  --bg: #ffffff;
+  --card-border: #dee2e6;
+  --radius: 12px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1d23;
+    --text: #e9ecef;
+    --gray-50: #212529;
+    --gray-100: #2c3035;
+    --gray-200: #343a40;
+    --gray-400: #6c757d;
+    --gray-600: #adb5bd;
+    --gray-800: #ced4da;
+    --gray-900: #f1f3f5;
+    --card-border: #343a40;
+    --primary-light: #1a2d45;
+    --green-light: #0f2d22;
+    --amber-bg: #2d1f08;
+    --red-light: #2d1010;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; font-size: 16px; line-height: 1.7; background: var(--bg); color: var(--text); }
+.wrapper { max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
+header { text-align: center; margin-bottom: 32px; }
+header .badge { display: inline-block; background: var(--primary-light); color: var(--primary); font-size: 13px; font-weight: 600; border-radius: 20px; padding: 4px 14px; margin-bottom: 10px; }
+header h1 { font-size: 28px; font-weight: 800; color: var(--gray-900); }
+header p { color: var(--gray-600); font-size: 15px; margin-top: 6px; }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 28px; border-bottom: 2px solid var(--gray-200); padding-bottom: 0; }
+.tab-btn { background: none; border: none; cursor: pointer; padding: 10px 16px; font-size: 14px; font-weight: 600; color: var(--gray-600); border-radius: 8px 8px 0 0; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all .2s; }
+.tab-btn:hover { color: var(--primary); background: var(--primary-light); }
+.tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+.card { background: var(--gray-50); border: 0.5px solid var(--card-border); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 20px; }
+.card-blue { background: var(--primary-light); border-color: var(--primary); }
+.card-green { background: var(--green-light); border-color: var(--green); }
+.card-amber { background: var(--amber-bg); border-color: var(--amber); color: #633806; }
+.card-amber h3, .card-amber strong { color: #633806; }
+.card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; color: var(--gray-900); }
+.card p { font-size: 15px; color: var(--text); }
+.card ul, .card ol { padding-left: 20px; font-size: 15px; }
+.card ul li, .card ol li { margin-bottom: 4px; }
+.section-title { font-size: 22px; font-weight: 800; color: var(--gray-900); margin-bottom: 6px; }
+.section-sub { color: var(--gray-600); font-size: 15px; margin-bottom: 24px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media(max-width:600px){ .grid-2 { grid-template-columns: 1fr; } }
+.tag { display: inline-block; background: var(--primary); color: #fff; font-size: 12px; font-weight: 700; border-radius: 6px; padding: 2px 8px; margin-right: 4px; }
+.tag-green { background: var(--green); }
+.tag-amber { background: var(--amber); }
+.tag-red { background: var(--red); }
+hr { border: none; border-top: 1px solid var(--gray-200); margin: 24px 0; }
+.example-box { background: var(--gray-100); border-left: 4px solid var(--primary); border-radius: 0 8px 8px 0; padding: 14px 18px; margin-bottom: 14px; font-size: 15px; }
+.example-box strong { color: var(--primary); }
+#umlCanvas { width: 100%; border: 0.5px solid var(--card-border); border-radius: var(--radius); background: var(--gray-50); display: block; }
+.id-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 28px; }
+@media(max-width:600px){ .id-fields { grid-template-columns: 1fr; } }
+.field-group label { display: block; font-size: 13px; font-weight: 700; color: var(--gray-600); margin-bottom: 4px; }
+.field-group input, .field-group textarea { width: 100%; padding: 10px 12px; border: 0.5px solid var(--card-border); border-radius: 8px; font-size: 15px; background: var(--bg); color: var(--text); outline: none; }
+.field-group input:focus, .field-group textarea:focus { border-color: var(--primary); }
+.progress-bar-wrap { background: var(--gray-200); border-radius: 99px; height: 8px; margin-bottom: 6px; }
+.progress-bar-fill { height: 8px; border-radius: 99px; background: var(--primary); transition: width .3s; }
+.progress-label { font-size: 13px; color: var(--gray-600); text-align: right; margin-bottom: 20px; }
+.q-block { background: var(--gray-50); border: 0.5px solid var(--card-border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 16px; }
+.q-block .q-label { font-size: 12px; font-weight: 700; color: var(--primary); margin-bottom: 6px; }
+.q-block .q-text { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: var(--gray-900); }
+.options label { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 15px; transition: background .15s; }
+.options label:hover { background: var(--primary-light); }
+.options input[type=radio] { margin-top: 3px; accent-color: var(--primary); }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 8px; font-size: 15px; font-weight: 700; border: none; cursor: pointer; transition: opacity .2s; }
+.btn:hover { opacity: .85; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-green { background: var(--green); color: #fff; }
+.btn-outline { background: var(--bg); color: var(--primary); border: 1.5px solid var(--primary); }
+.btn-group { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+.result-box { background: var(--green-light); border: 0.5px solid var(--green); border-radius: var(--radius); padding: 24px; text-align: center; font-size: 16px; color: #0f5132; margin-top: 20px; }
+table.uc-table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 16px; }
+table.uc-table th { background: var(--primary); color: #fff; padding: 8px 12px; text-align: left; }
+table.uc-table td { padding: 8px 12px; border-bottom: 0.5px solid var(--card-border); vertical-align: top; }
+table.uc-table tr:nth-child(even) td { background: var(--gray-50); }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+<header>
+  <div class="badge">UDESC · Engenharia de Software</div>
+  <h1>Casos de Uso</h1>
+  <p>Aula introdutória · Requisitos Funcionais na perspectiva do usuário</p>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="showTab('t1',this)">1 · O que é?</button>
+  <button class="tab-btn" onclick="showTab('t2',this)">2 · Atores</button>
+  <button class="tab-btn" onclick="showTab('t3',this)">3 · Estrutura</button>
+  <button class="tab-btn" onclick="showTab('t4',this)">4 · Diagrama UML</button>
+  <button class="tab-btn" onclick="showTab('t5',this)">5 · Boas Práticas</button>
+  <button class="tab-btn" onclick="showTab('tq',this)">📝 Questionário</button>
+</div>
+
+<!-- PARTE 1 -->
+<div id="t1" class="tab-pane active">
+  <div class="section-title">O que é um Caso de Uso?</div>
+  <div class="section-sub">Capturando o que o sistema deve fazer — do ponto de vista de quem o usa.</div>
+  <div class="card card-blue">
+    <h3><i class="ti ti-bulb"></i> Definição</h3>
+    <p>Um <strong>Caso de Uso</strong> descreve uma sequência de interações entre um <em>ator</em> e o <em>sistema</em>, com o objetivo de alcançar um resultado de valor para o ator.</p>
+    <p style="margin-top:8px">Introduzido por <strong>Ivar Jacobson</strong> em 1987 (Ericsson) e popularizado com a UML nos anos 1990. Hoje é parte do <em>Unified Process</em> e do <em>RUP</em>.</p>
+  </div>
+  <div class="card card-amber">
+    <h3>🧠 Metáfora do Caixa Eletrônico</h3>
+    <p>Pense num caixa eletrônico: você não se importa com os circuitos internos — você quer <em>sacar dinheiro</em>. O Caso de Uso captura exatamente essa intenção: o que o usuário quer realizar, sem entrar em como o sistema faz isso por dentro.</p>
+  </div>
+  <hr/>
+  <h3 style="margin-bottom:14px">Exemplos do dia a dia mapeados como Casos de Uso</h3>
+  <div class="example-box"><strong>🛒 E-commerce:</strong> Realizar Compra · Rastrear Pedido · Cancelar Pedido · Aplicar Cupom de Desconto</div>
+  <div class="example-box"><strong>🏦 App Bancário:</strong> Transferir via PIX · Emitir Boleto · Consultar Extrato · Bloquear Cartão</div>
+  <div class="example-box"><strong>📚 Sistema Acadêmico (UDESC):</strong> Matricular em Disciplina · Lançar Notas · Emitir Histórico · Solicitar Trancamento</div>
+  <div class="example-box"><strong>🏥 Clínica Médica:</strong> Agendar Consulta · Emitir Receita · Registrar Prontuário · Realizar Check-in</div>
+  <div class="example-box"><strong>🚗 Aplicativo de Transporte:</strong> Solicitar Corrida · Avaliar Motorista · Cadastrar Forma de Pagamento</div>
+  <hr/>
+  <div class="grid-2">
+    <div class="card">
+      <h3>✅ Caso de Uso (correto)</h3>
+      <ul><li>Realizar Login</li><li>Emitir Nota Fiscal</li><li>Agendar Entrega</li><li>Recuperar Senha</li></ul>
+    </div>
+    <div class="card" style="border-color:var(--red)">
+      <h3 style="color:var(--red)">❌ Não são Casos de Uso</h3>
+      <ul><li>Clicar no botão "Enviar"</li><li>Banco de dados de clientes</li><li>Algoritmo de hash de senha</li><li>Tela de login com campos X e Y</li></ul>
+    </div>
+  </div>
+  <div class="card card-amber" style="margin-top:8px">
+    <h3>⚠️ Caso de Uso ≠ Funcionalidade técnica</h3>
+    <p>Um caso de uso é sempre expresso do ponto de vista do <strong>objetivo do usuário</strong>. "Criptografar senha com bcrypt" não é um caso de uso — é um detalhe de implementação. "Cadastrar nova senha" sim.</p>
+  </div>
+  <hr/>
+  <div class="card">
+    <h3>Comparativo: Casos de Uso vs. Histórias de Usuário vs. Requisitos</h3>
+    <table class="uc-table">
+      <tr><th>Aspecto</th><th>Caso de Uso</th><th>História de Usuário</th><th>Requisito Clássico</th></tr>
+      <tr><td>Formato</td><td>Fluxo passo a passo</td><td>Frase curta (Como… quero… para…)</td><td>O sistema deverá…</td></tr>
+      <tr><td>Detalhe</td><td>Médio/alto</td><td>Baixo</td><td>Alto</td></tr>
+      <tr><td>Fluxos alternativos</td><td>✅ Sim</td><td>❌ Geralmente não</td><td>✅ Sim</td></tr>
+      <tr><td>Usa em</td><td>UP, RUP, análise OO</td><td>Scrum, XP</td><td>Cascata, contratos</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- PARTE 2 -->
+<div id="t2" class="tab-pane">
+  <div class="section-title">Atores e Sistema</div>
+  <div class="section-sub">Quem interage com o sistema — e o que o sistema representa.</div>
+  <div class="card card-blue">
+    <h3><i class="ti ti-user"></i> O que é um Ator?</h3>
+    <p>Um <strong>ator</strong> é qualquer entidade <em>externa</em> ao sistema que interage com ele. Pode ser uma pessoa, outro sistema, ou até um evento de tempo.</p>
+  </div>
+  <div class="card card-amber">
+    <h3>🧠 Metáfora do Palco</h3>
+    <p>O sistema é o palco. Os atores estão na plateia — eles enviam comandos para o palco e recebem respostas, mas nunca entram nele. Tudo que acontece <em>dentro</em> do palco é responsabilidade do sistema.</p>
+  </div>
+  <hr/>
+  <h3 style="margin-bottom:14px">Tipos de Atores com exemplos</h3>
+  <div class="grid-2">
+    <div class="card">
+      <h3>👤 Ator Humano</h3>
+      <p><strong>Papel</strong>, não pessoa específica.</p>
+      <ul style="margin-top:8px">
+        <li><span class="tag">Cliente</span> no e-commerce</li>
+        <li><span class="tag">Aluno</span> no sistema acadêmico</li>
+        <li><span class="tag">Professor</span> no portal UDESC</li>
+        <li><span class="tag">Administrador</span> no ERP</li>
+        <li><span class="tag">Caixa</span> no supermercado</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🤖 Ator Sistema Externo</h3>
+      <p>Outro software que usa ou alimenta o sistema.</p>
+      <ul style="margin-top:8px">
+        <li><span class="tag tag-green">Gateway de Pagamento</span> no checkout</li>
+        <li><span class="tag tag-green">API do Correios</span> no frete</li>
+        <li><span class="tag tag-green">SIGA/UDESC</span> enviando dados</li>
+        <li><span class="tag tag-green">Sistema de NF-e</span> na nota fiscal</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⏰ Ator Temporal</h3>
+      <p>O tempo como gatilho de ações.</p>
+      <ul style="margin-top:8px">
+        <li><span class="tag tag-amber">Agendador</span> gerando relatório diário</li>
+        <li><span class="tag tag-amber">Timer</span> expirando sessão inativa</li>
+        <li><span class="tag tag-amber">Cron</span> enviando e-mail mensal</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🎭 Ator Principal vs. Secundário</h3>
+      <ul style="margin-top:8px">
+        <li><strong>Principal:</strong> inicia o caso de uso. Ex.: Cliente clica "Comprar"</li>
+        <li><strong>Secundário:</strong> apoia ou é notificado. Ex.: Transportadora recebe pedido</li>
+      </ul>
+    </div>
+  </div>
+  <hr/>
+  <h3 style="margin-bottom:14px">O Sistema como "caixa preta"</h3>
+  <div class="card card-amber">
+    <h3>📦 O princípio da Caixa Preta</h3>
+    <p>No modelo de casos de uso, o sistema é uma caixa preta. Sabemos <em>o que entra</em> e <em>o que sai</em>, mas o caso de uso não descreve <em>como</em> o sistema processa internamente.</p>
+    <p style="margin-top:8px"><strong>Errado:</strong> "O sistema consulta a tabela CLIENTES no banco Oracle e retorna os dados."<br/>
+    <strong>Certo:</strong> "O sistema exibe os dados do cliente."</p>
+  </div>
+  <hr/>
+  <h3 style="margin-bottom:14px">Exemplos completos de atores por sistema</h3>
+  <table class="uc-table">
+    <tr><th>Sistema</th><th>Atores Humanos</th><th>Atores Sistema</th><th>Atores Temporais</th></tr>
+    <tr><td>E-commerce</td><td>Cliente, Vendedor, Admin</td><td>Gateway Pagamento, Transportadora, Receita Federal</td><td>Cron de relatório diário</td></tr>
+    <tr><td>Sistema Acadêmico</td><td>Aluno, Professor, Secretaria</td><td>SIGA, Biblioteca, RU</td><td>Fechamento de período letivo</td></tr>
+    <tr><td>App de Saúde</td><td>Paciente, Médico, Recepcionista</td><td>Plano de saúde, Farmácia</td><td>Lembrete de consulta</td></tr>
+    <tr><td>Sistema Bancário</td><td>Correntista, Gerente, Auditor</td><td>Banco Central, Receita, SELIC</td><td>Cobrança de tarifas mensais</td></tr>
+  </table>
+</div>
+
+<!-- PARTE 3 -->
+<div id="t3" class="tab-pane">
+  <div class="section-title">Estrutura de um Caso de Uso</div>
+  <div class="section-sub">Como escrever um caso de uso completo — do nome às exceções.</div>
+  <div class="card card-blue">
+    <h3>Elementos obrigatórios</h3>
+    <div class="grid-2" style="margin-top:12px">
+      <ul>
+        <li><strong>Nome</strong> — verbo + substantivo</li>
+        <li><strong>Ator principal</strong></li>
+        <li><strong>Pré-condições</strong></li>
+        <li><strong>Fluxo principal</strong></li>
+      </ul>
+      <ul>
+        <li><strong>Fluxos alternativos</strong></li>
+        <li><strong>Fluxos de exceção</strong></li>
+        <li><strong>Pós-condições (sucesso)</strong></li>
+        <li><strong>Pós-condições (falha)</strong></li>
+      </ul>
+    </div>
+  </div>
+  <div class="card card-amber">
+    <h3>🧠 Metáfora da Receita de Bolo</h3>
+    <p>Um caso de uso é como uma receita: tem ingredientes necessários (pré-condições), passo a passo (fluxo principal), variações (fluxo alternativo), e o que fazer se der errado (fluxo de exceção). O resultado final é o bolo pronto (pós-condição).</p>
+  </div>
+  <hr/>
+  <h3 style="margin-bottom:16px">Exemplo completo: Realizar Login</h3>
+  <div class="card">
+    <table class="uc-table">
+      <tr><th colspan="2">UC-01 · Realizar Login</th></tr>
+      <tr><td width="180"><strong>Ator principal</strong></td><td>Usuário (Aluno ou Professor)</td></tr>
+      <tr><td><strong>Pré-condições</strong></td><td>Usuário possui cadastro ativo no sistema. Usuário não está autenticado.</td></tr>
+      <tr><td><strong>Fluxo principal</strong></td><td>1. Usuário acessa a página de login<br/>2. Usuário informa e-mail e senha<br/>3. Usuário clica em "Entrar"<br/>4. Sistema valida as credenciais<br/>5. Sistema redireciona para a página inicial<br/>6. Sistema exibe mensagem de boas-vindas</td></tr>
+      <tr><td><strong>Fluxo alternativo A</strong></td><td><em>Primeiro acesso:</em><br/>4a. Sistema detecta que é o primeiro login<br/>4b. Sistema solicita troca obrigatória de senha<br/>4c. Usuário define nova senha → retorna ao passo 4</td></tr>
+      <tr><td><strong>Fluxo de exceção E1</strong></td><td><em>Credenciais inválidas:</em><br/>4e. Sistema exibe "E-mail ou senha incorretos"<br/>4f. Após 3 tentativas, conta é bloqueada por 15 min</td></tr>
+      <tr><td><strong>Pós-cond. sucesso</strong></td><td>Usuário autenticado, sessão iniciada, log de acesso registrado.</td></tr>
+      <tr><td><strong>Pós-cond. falha</strong></td><td>Usuário não autenticado, tentativas incrementadas.</td></tr>
+    </table>
+  </div>
+  <hr/>
+  <h3 style="margin-bottom:16px">Mais exemplos de casos de uso descritos</h3>
+  <div class="card" style="margin-bottom:14px">
+    <h3>UC-02 · Realizar Compra (E-commerce)</h3>
+    <table class="uc-table">
+      <tr><td width="180"><strong>Ator</strong></td><td>Cliente</td></tr>
+      <tr><td><strong>Pré-cond.</strong></td><td>Cliente logado, ao menos 1 item no carrinho.</td></tr>
+      <tr><td><strong>Fluxo principal</strong></td><td>1. Cliente acessa o carrinho → 2. Confirma itens → 3. Informa endereço de entrega → 4. Escolhe forma de pagamento → 5. Sistema processa pagamento via Gateway → 6. Sistema gera nº do pedido → 7. Cliente recebe confirmação por e-mail</td></tr>
+      <tr><td><strong>Fluxo alt. A</strong></td><td>Pagamento recusado: sistema notifica cliente, mantém carrinho.</td></tr>
+      <tr><td><strong>Pós-cond.</strong></td><td>Pedido criado, estoque decrementado, e-mail enviado.</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>UC-03 · Emitir Histórico Escolar (UDESC)</h3>
+    <table class="uc-table">
+      <tr><td width="180"><strong>Ator</strong></td><td>Aluno</td></tr>
+      <tr><td><strong>Pré-cond.</strong></td><td>Aluno autenticado, sem pendências financeiras.</td></tr>
+      <tr><td><strong>Fluxo principal</strong></td><td>1. Aluno acessa "Documentos" → 2. Seleciona "Histórico Escolar" → 3. Escolhe idioma (PT/EN) → 4. Sistema gera PDF com assinatura digital → 5. Aluno faz download</td></tr>
+      <tr><td><strong>Fluxo alt. A</strong></td><td>Pendência financeira: sistema bloqueia emissão e exibe débitos.</td></tr>
+      <tr><td><strong>Pós-cond.</strong></td><td>PDF gerado, solicitação registrada no log.</td></tr>
+    </table>
+  </div>
+  <hr/>
+  <div class="card card-amber">
+    <h3>🧠 Dica do nome do Caso de Uso</h3>
+    <p>Sempre use <strong>Verbo no infinitivo + Substantivo</strong>: <em>Realizar Pagamento</em>, <em>Emitir Nota Fiscal</em>, <em>Cancelar Pedido</em>. Evite nomes vagos como "Dados do Usuário" ou "Processamento".</p>
+  </div>
+</div>
+
+<!-- PARTE 4 -->
+<div id="t4" class="tab-pane">
+  <div class="section-title">Diagrama de Casos de Uso (UML)</div>
+  <div class="section-sub">Representação visual dos casos de uso, atores e relacionamentos.</div>
+  <div class="card card-blue">
+    <h3>Notação UML básica</h3>
+    <div class="grid-2" style="margin-top:10px">
+      <ul>
+        <li><strong>Boneco palito</strong> → Ator</li>
+        <li><strong>Elipse</strong> → Caso de Uso</li>
+        <li><strong>Retângulo</strong> → Fronteira do sistema</li>
+        <li><strong>Linha sólida</strong> → Associação ator–UC</li>
+      </ul>
+      <ul>
+        <li><strong>&lt;&lt;include&gt;&gt;</strong> → UC sempre inclui outro</li>
+        <li><strong>&lt;&lt;extend&gt;&gt;</strong> → UC opcionalmente estende outro</li>
+        <li><strong>Seta vazia</strong> → Generalização de ator</li>
+      </ul>
+    </div>
+  </div>
+  <hr/>
+  <h3 style="margin-bottom:12px">Diagrama Interativo — Sistema de E-commerce</h3>
+  <canvas id="umlCanvas" height="520"></canvas>
+  <hr/>
+  <h3 style="margin-bottom:14px">Relacionamentos em detalhe</h3>
+  <div class="grid-2">
+    <div class="card card-green">
+      <h3>&lt;&lt;include&gt;&gt;</h3>
+      <p><strong>Sempre acontece.</strong> O UC base obrigatoriamente executa o UC incluído.</p>
+      <ul style="margin-top:8px">
+        <li>Realizar Compra <strong>inclui</strong> Autenticar Usuário</li>
+        <li>Emitir Nota Fiscal <strong>inclui</strong> Validar CNPJ</li>
+        <li>Transferir PIX <strong>inclui</strong> Verificar Saldo</li>
+      </ul>
+    </div>
+    <div class="card" style="border-color:var(--amber)">
+      <h3>&lt;&lt;extend&gt;&gt;</h3>
+      <p><strong>Opcional/condicional.</strong> O UC estendido é executado apenas em certas condições.</p>
+      <ul style="margin-top:8px">
+        <li>Realizar Compra é estendido por <strong>Aplicar Cupom</strong></li>
+        <li>Agendar Consulta é estendido por <strong>Notificar Médico</strong></li>
+        <li>Realizar Login é estendido por <strong>Ativar 2FA</strong></li>
+      </ul>
+    </div>
+  </div>
+  <div class="card card-amber" style="margin-top:8px">
+    <h3>🧠 Include vs. Extend — a metáfora do aeroporto</h3>
+    <p><strong>Include</strong> é como o check-in: toda viagem <em>sempre</em> passa pelo check-in. <strong>Extend</strong> é como a sala VIP: só quem tem acesso especial (condição) entra nela. O voo acontece com ou sem a sala VIP.</p>
+  </div>
+  <hr/>
+  <h3 style="margin-bottom:14px">Generalização de Ator</h3>
+  <div class="example-box"><strong>Exemplo:</strong> No sistema acadêmico, <em>Usuário</em> é o ator genérico. <em>Aluno</em> e <em>Professor</em> herdam de Usuário — ambos podem "Realizar Login", mas só o Professor pode "Lançar Notas" e só o Aluno pode "Solicitar Matrícula".</div>
+  <div class="card">
+    <h3>Exemplos de diagramas por domínio</h3>
+    <table class="uc-table">
+      <tr><th>Sistema</th><th>Atores</th><th>UCs principais</th><th>include/extend</th></tr>
+      <tr><td>App Bancário</td><td>Correntista, Sistema Banco Central</td><td>Transferir PIX, Pagar Boleto, Bloquear Cartão</td><td>Transferir PIX inclui Verificar Saldo; extend Notificar por SMS</td></tr>
+      <tr><td>Clínica</td><td>Paciente, Médico, Recepcionista</td><td>Agendar Consulta, Registrar Prontuário, Emitir Receita</td><td>Emitir Receita inclui Autenticar CRM; extend Enviar Receita Digital</td></tr>
+      <tr><td>Biblioteca</td><td>Leitor, Bibliotecário, Agendador</td><td>Reservar Livro, Renovar Empréstimo, Devolver Livro</td><td>Devolver Livro extend Cobrar Multa; Reservar inclui Verificar Disponibilidade</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- PARTE 5 -->
+<div id="t5" class="tab-pane">
+  <div class="section-title">Boas Práticas e Erros Comuns</div>
+  <div class="section-sub">O que separa um bom caso de uso de um caso de uso problemático.</div>
+  <div class="grid-2">
+    <div class="card card-green">
+      <h3>✅ Boas Práticas</h3>
+      <ul>
+        <li>Nome: Verbo + Substantivo no infinitivo</li>
+        <li>Perspectiva sempre do ator, nunca do sistema</li>
+        <li>Granularidade média: um objetivo por UC</li>
+        <li>Cobrir fluxos alternativos e de exceção</li>
+        <li>Usar linguagem de negócio, não técnica</li>
+        <li>Validar com stakeholders (não só com devs)</li>
+      </ul>
+    </div>
+    <div class="card" style="border-color:var(--red)">
+      <h3 style="color:var(--red)">❌ Erros Comuns</h3>
+      <ul>
+        <li>UCs orientados à interface (clicar, digitar)</li>
+        <li>UCs muito granulares: "Validar campo CPF"</li>
+        <li>UCs muito amplos: "Gerenciar Sistema"</li>
+        <li>Misturar design e requisito</li>
+        <li>Esquecer fluxos de exceção</li>
+        <li>Ator = pessoa física (João da Silva) em vez de papel</li>
+      </ul>
+    </div>
+  </div>
+  <hr/>
+  <h3 style="margin-bottom:14px">Erros com exemplos práticos</h3>
+  <div class="card card-amber">
+    <h3>🚫 Erro 1: UC orientado à interface</h3>
+    <p><strong>Errado:</strong> "Clicar no botão Salvar" · "Preencher campo E-mail" · "Selecionar dropdown de Estado"<br/>
+    <strong>Certo:</strong> "Cadastrar Endereço de Entrega" — o caso de uso é o objetivo, não o gesto.</p>
+  </div>
+  <div class="card card-amber">
+    <h3>🚫 Erro 2: Granularidade inadequada</h3>
+    <p><strong>Muito pequeno:</strong> "Validar CPF", "Gerar Token JWT", "Hash de Senha" — esses são passos internos, não casos de uso.<br/>
+    <strong>Muito grande:</strong> "Gerenciar Usuários" — quebre em UCs específicos.<br/>
+    <strong>Certo:</strong> "Cadastrar Usuário", "Alterar Senha", "Desativar Conta".</p>
+  </div>
+  <div class="card card-amber">
+    <h3>🚫 Erro 3: Ator = pessoa física</h3>
+    <p><strong>Errado:</strong> Ator "João — Gerente Financeiro da Empresa X"<br/>
+    <strong>Certo:</strong> Ator "Gerente Financeiro" — representa o <em>papel</em>, não o indivíduo.</p>
+  </div>
+  <hr/>
+  <h3 style="margin-bottom:14px">Quando usar (e quando não usar) Casos de Uso</h3>
+  <div class="grid-2">
+    <div class="card card-blue">
+      <h3>✅ Use Casos de Uso quando:</h3>
+      <ul>
+        <li>O sistema tem múltiplos perfis de usuário</li>
+        <li>Os requisitos são orientados a processos de negócio</li>
+        <li>O projeto usa UP, RUP ou análise orientada a objetos</li>
+        <li>Precisa comunicar requisitos com stakeholders não técnicos</li>
+        <li>O sistema tem fluxos complexos com muitas variações</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚠️ Cuidado ou evite quando:</h3>
+      <ul>
+        <li>Time ágil puro com sprints curtos (prefira User Stories)</li>
+        <li>Sistema muito simples, poucos fluxos</li>
+        <li>API pura sem interface de usuário visível</li>
+        <li>Equipe pequena onde o custo de manutenção é alto</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card card-amber" style="margin-top:8px">
+    <h3>🧠 Metáfora do Mapa</h3>
+    <p>Casos de Uso são como mapas: não mostram todos os detalhes da cidade (código, banco de dados), mas dão a visão geral do território (o que o sistema faz). Antes de construir a cidade, você precisa do mapa.</p>
+  </div>
+  <hr/>
+  <h3 style="margin-bottom:14px">Checklist antes de entregar seus Casos de Uso</h3>
+  <div class="card"><div id="checklist"></div></div>
+</div>
+
+<!-- QUESTIONÁRIO -->
+<div id="tq" class="tab-pane">
+  <div class="section-title">📝 Questionário Avaliativo</div>
+  <div class="section-sub">20 questões · Engenharia de Software · UDESC</div>
+  <div id="id-section">
+    <div class="id-fields">
+      <div class="field-group"><label>Nome completo *</label><input id="f-nome" type="text" placeholder="Seu nome completo"/></div>
+      <div class="field-group"><label>Matrícula *</label><input id="f-mat" type="text" placeholder="Ex: 20240123"/></div>
+      <div class="field-group"><label>Turma *</label><input id="f-turma" type="text" placeholder="Ex: 2024/1 – Engenharia de Software"/></div>
+      <div class="field-group"><label>URL do Webhook (professor)</label><input id="f-webhook" type="text" placeholder="https://..."/></div>
+    </div>
+    <button class="btn btn-primary" onclick="iniciarQuiz()"><i class="ti ti-player-play"></i> Iniciar Questionário</button>
+  </div>
+  <div id="quiz-section" style="display:none">
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="pbar" style="width:0%"></div></div>
+    <div class="progress-label" id="plabel">0 de 20 respondidas</div>
+    <div id="questions-container"></div>
+    <button class="btn btn-primary" onclick="finalizarQuiz()" style="margin-top:8px"><i class="ti ti-send"></i> Finalizar e Enviar</button>
+  </div>
+  <div id="result-section" style="display:none"></div>
+</div>
+
+</div>
+
+<script>
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+const checks = [
+  "Todos os casos de uso têm nome no formato Verbo + Substantivo?",
+  "Cada UC tem pelo menos um ator principal identificado?",
+  "Pré-condições estão descritas de forma verificável?",
+  "O fluxo principal tem no mínimo 3 passos claros?",
+  "Há pelo menos um fluxo alternativo ou de exceção?",
+  "As pós-condições de sucesso E de falha estão documentadas?",
+  "Os UCs não descrevem detalhes de interface ou implementação?",
+  "A granularidade está adequada (nem pequena demais, nem grande demais)?",
+  "Os atores representam papéis, não pessoas físicas específicas?",
+  "O diagrama UML usa a notação correta (elipse, boneco, retângulo de fronteira)?",
+];
+const cl = document.getElementById('checklist');
+if(cl) {
+  checks.forEach((c,i) => {
+    const d = document.createElement('div');
+    d.style.cssText = 'display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--gray-200)';
+    d.innerHTML = `<input type="checkbox" id="ck${i}" style="accent-color:var(--primary);width:18px;height:18px;cursor:pointer"><label for="ck${i}" style="cursor:pointer;font-size:14px">${c}</label>`;
+    cl.appendChild(d);
+  });
+}
+
+const canvas = document.getElementById('umlCanvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  const w = canvas.parentElement.clientWidth;
+  canvas.width = w;
+  canvas.height = 520;
+  drawDiagram();
+}
+
+function drawDiagram() {
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0,0,w,h);
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const textColor = isDark ? '#e9ecef' : '#212529';
+  const bgColor = isDark ? '#2c3035' : '#f8f9fa';
+  const borderColor = isDark ? '#343a40' : '#dee2e6';
+  const primary = '#185fa5';
+  const green = '#1d9e75';
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0,0,w,h);
+  const bx = 140, by = 20, bw = w - 280, bh = h - 40;
+  ctx.strokeStyle = primary; ctx.lineWidth = 2;
+  ctx.strokeRect(bx, by, bw, bh);
+  ctx.fillStyle = primary; ctx.font = 'bold 14px system-ui'; ctx.textAlign = 'center';
+  ctx.fillText('Sistema de E-commerce', bx + bw/2, by + 18);
+  const ucs = [
+    { label: 'Realizar Login', x: bx + bw*0.25, y: 90 },
+    { label: 'Realizar Compra', x: bx + bw*0.6, y: 90 },
+    { label: 'Autenticar\nUsuário', x: bx + bw*0.25, y: 195 },
+    { label: 'Verificar\nSaldo/Estoque', x: bx + bw*0.25, y: 300 },
+    { label: 'Rastrear\nPedido', x: bx + bw*0.6, y: 195 },
+    { label: 'Aplicar\nCupom', x: bx + bw*0.6, y: 320 },
+    { label: 'Cancelar\nPedido', x: bx + bw*0.6, y: 430 },
+    { label: 'Processar\nPagamento', x: bx + bw*0.88, y: 195 },
+  ];
+  function drawUC(uc, color) {
+    ctx.save();
+    ctx.strokeStyle = color || primary; ctx.lineWidth = 1.5;
+    ctx.fillStyle = isDark ? '#1a2d45' : '#e8f0f9';
+    ctx.beginPath();
+    ctx.ellipse(uc.x, uc.y, 68, 30, 0, 0, Math.PI*2);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = textColor; ctx.font = '12px system-ui'; ctx.textAlign = 'center';
+    const lines = uc.label.split('\n');
+    lines.forEach((l,i) => ctx.fillText(l, uc.x, uc.y + (i - (lines.length-1)/2)*14 + 4));
+    ctx.restore();
+  }
+  ucs.forEach((uc,i) => drawUC(uc, i >= 7 ? green : primary));
+  function drawActor(x, y, label, color) {
+    ctx.save();
+    ctx.strokeStyle = color || textColor; ctx.lineWidth = 1.5; ctx.fillStyle = color || textColor;
+    ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y+12); ctx.lineTo(x, y+38); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x-16, y+22); ctx.lineTo(x+16, y+22); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y+38); ctx.lineTo(x-14, y+56); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y+38); ctx.lineTo(x+14, y+56); ctx.stroke();
+    ctx.font = 'bold 12px system-ui'; ctx.textAlign = 'center';
+    ctx.fillText(label, x, y+70);
+    ctx.restore();
+  }
+  drawActor(50, 60, 'Cliente', primary);
+  drawActor(50, 200, 'Admin', primary);
+  drawActor(w - 60, 140, 'Gateway\nPgto', green);
+  function line(x1,y1,x2,y2) {
+    ctx.save(); ctx.strokeStyle = borderColor; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    ctx.restore();
+  }
+  function arrow(x1,y1,x2,y2,label,color) {
+    ctx.save();
+    ctx.strokeStyle = color||primary; ctx.lineWidth=1.2; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    const ang = Math.atan2(y2-y1, x2-x1);
+    ctx.setLineDash([]);
+    ctx.fillStyle = color||primary;
+    ctx.beginPath();
+    ctx.moveTo(x2,y2);
+    ctx.lineTo(x2-10*Math.cos(ang-0.4), y2-10*Math.sin(ang-0.4));
+    ctx.lineTo(x2-10*Math.cos(ang+0.4), y2-10*Math.sin(ang+0.4));
+    ctx.closePath(); ctx.fill();
+    if(label) {
+      ctx.fillStyle = color||primary; ctx.font='italic 11px system-ui'; ctx.textAlign='center';
+      ctx.fillText(label, (x1+x2)/2, (y1+y2)/2 - 6);
+    }
+    ctx.restore();
+  }
+  line(62, 90, ucs[0].x-68, ucs[0].y);
+  line(62, 95, ucs[1].x-68, ucs[1].y);
+  line(62, 100, ucs[4].x-68, ucs[4].y);
+  line(62, 105, ucs[6].x-68, ucs[6].y);
+  line(62, 230, ucs[6].x-68, ucs[6].y);
+  line(w-72, 185, ucs[7].x+68, ucs[7].y);
+  arrow(ucs[0].x, ucs[0].y+30, ucs[2].x, ucs[2].y-30, '«include»', green);
+  arrow(ucs[1].x-30, ucs[1].y+30, ucs[2].x+30, ucs[2].y-30, '', green);
+  arrow(ucs[1].x-50, ucs[1].y+28, ucs[3].x+50, ucs[3].y-28, '«include»', green);
+  arrow(ucs[1].x+68, ucs[1].y, ucs[7].x-68, ucs[7].y, '«include»', green);
+  arrow(ucs[5].x, ucs[5].y-30, ucs[1].x, ucs[1].y+30, '«extend»', '#ba7517');
+}
+
+window.addEventListener('load', resizeCanvas);
+window.addEventListener('resize', resizeCanvas);
+
+const questoes = [
+  { bloco:'Conceito e Origem', q:'Quem introduziu o conceito de Casos de Uso na Engenharia de Software?', opts:['Grady Booch','Ivar Jacobson','James Rumbaugh','Martin Fowler'], correta:1 },
+  { bloco:'Conceito e Origem', q:'Qual é a principal finalidade de um Caso de Uso?', opts:['Descrever a arquitetura interna do sistema','Detalhar o banco de dados','Capturar requisitos funcionais do ponto de vista do usuário','Documentar o código-fonte'], correta:2 },
+  { bloco:'Conceito e Origem', q:'Qual das alternativas NÃO é um Caso de Uso adequado?', opts:['Realizar Compra','Emitir Nota Fiscal','Criptografar senha com bcrypt','Cancelar Pedido'], correta:2 },
+  { bloco:'Atores', q:'Em um Caso de Uso, o que representa um Ator?', opts:['Um módulo interno do sistema','Uma entidade externa que interage com o sistema','Um banco de dados','Um desenvolvedor do time'], correta:1 },
+  { bloco:'Atores', q:'Qual dos itens a seguir é um exemplo correto de ator temporal?', opts:['Cliente','Gerente','Agendador que envia relatório diário','Gateway de Pagamento'], correta:2 },
+  { bloco:'Atores', q:'Qual prática está ERRADA na definição de atores?', opts:['Usar papéis como "Cliente" e "Administrador"','Nomear o ator como "Maria Silva — funcionária do RH"','Incluir sistemas externos como atores','Representar eventos de tempo como atores'], correta:1 },
+  { bloco:'Atores', q:'No sistema acadêmico da UDESC, qual seria um ator secundário no UC "Emitir Histórico Escolar"?', opts:['Aluno','Sistema de assinatura digital','Secretaria','Professor'], correta:1 },
+  { bloco:'Estrutura do Caso de Uso', q:'Qual é o formato correto para nomear um Caso de Uso?', opts:['Substantivo + Adjetivo','Verbo no infinitivo + Substantivo','Sigla técnica','Descrição livre em prosa'], correta:1 },
+  { bloco:'Estrutura do Caso de Uso', q:'O que define as Pré-condições de um Caso de Uso?', opts:['O resultado esperado após a execução','As condições que devem ser verdadeiras para o UC iniciar','Os fluxos alternativos possíveis','Os atores secundários envolvidos'], correta:1 },
+  { bloco:'Estrutura do Caso de Uso', q:'Qual é a diferença entre Fluxo Alternativo e Fluxo de Exceção?', opts:['Não há diferença, são sinônimos','Fluxo alternativo é um caminho válido diferente do principal; exceção é uma situação de erro ou falha','Fluxo de exceção é sempre obrigatório','Fluxo alternativo só existe em diagramas UML'], correta:1 },
+  { bloco:'Estrutura do Caso de Uso', q:'No UC "Realizar Login", após 3 tentativas inválidas a conta é bloqueada. Isso representa:', opts:['Pré-condição','Fluxo principal','Fluxo de exceção','Pós-condição de sucesso'], correta:2 },
+  { bloco:'Diagrama UML', q:'Qual símbolo representa um Caso de Uso no diagrama UML?', opts:['Retângulo com o nome','Elipse com o nome','Losango','Seta pontilhada'], correta:1 },
+  { bloco:'Diagrama UML', q:'O que significa o relacionamento «include» entre dois Casos de Uso?', opts:['O UC base pode opcionalmente executar o UC incluído','O UC base sempre executa o UC incluído','O UC incluído substitui o UC base','Os dois UCs são equivalentes'], correta:1 },
+  { bloco:'Diagrama UML', q:'Em qual situação o relacionamento «extend» é mais adequado?', opts:['Quando um UC é sempre executado por outro','Quando um UC é opcionalmente executado sob certas condições','Quando dois atores compartilham o mesmo UC','Quando um ator herda de outro'], correta:1 },
+  { bloco:'Diagrama UML', q:'No diagrama UML de casos de uso, o retângulo ao redor dos UCs representa:', opts:['A classe principal do sistema','A fronteira do sistema (system boundary)','O banco de dados','O servidor de aplicação'], correta:1 },
+  { bloco:'Boas Práticas', q:'Qual dos seguintes é um exemplo de UC com granularidade MUITO PEQUENA (inadequada)?', opts:['Realizar Compra','Validar campo CPF','Agendar Consulta','Emitir Nota Fiscal'], correta:1 },
+  { bloco:'Boas Práticas', q:'Qual dos seguintes é um exemplo de UC com granularidade MUITO GRANDE (inadequada)?', opts:['Cancelar Pedido','Recuperar Senha','Gerenciar Todo o Sistema','Bloquear Cartão'], correta:2 },
+  { bloco:'Boas Práticas', q:'Por que Casos de Uso NÃO devem descrever a interface gráfica?', opts:['Porque a UML não suporta descrição de interfaces','Porque interfaces mudam frequentemente e o requisito deve ser estável','Porque interfaces são documentadas em diagramas de classe','Porque o cliente não entende de interfaces'], correta:1 },
+  { bloco:'Boas Práticas', q:'Em qual contexto os Casos de Uso são MENOS recomendados?', opts:['Projetos com múltiplos perfis de usuário','APIs puras sem interface com usuário','Sistemas com fluxos de negócio complexos','Projetos que usam RUP ou Unified Process'], correta:1 },
+  { bloco:'Boas Práticas', q:'Qual a principal diferença entre Caso de Uso e Histórias de Usuário (User Stories)?', opts:['Casos de Uso são usados apenas em Java; User Stories em Python','Casos de Uso detalham fluxos completos com alternativas; User Stories são frases curtas de intenção','Casos de Uso são mais modernos que User Stories','Não há diferença prática entre os dois'], correta:1 },
+];
+
+let respostas = new Array(20).fill(null);
+
+function iniciarQuiz() {
+  const nome = document.getElementById('f-nome').value.trim();
+  const mat = document.getElementById('f-mat').value.trim();
+  const turma = document.getElementById('f-turma').value.trim();
+  if(!nome || !mat || !turma) { alert('Preencha Nome, Matrícula e Turma para continuar.'); return; }
+  document.getElementById('id-section').style.display = 'none';
+  document.getElementById('quiz-section').style.display = 'block';
+  renderQuestions();
+}
+
+function renderQuestions() {
+  const c = document.getElementById('questions-container');
+  c.innerHTML = '';
+  questoes.forEach((q, i) => {
+    const div = document.createElement('div');
+    div.className = 'q-block';
+    div.innerHTML = `<div class="q-label">${q.bloco} · Questão ${i+1} de 20</div>
+      <div class="q-text">${i+1}. ${q.q}</div>
+      <div class="options" id="opts-${i}">
+        ${q.opts.map((o,j)=>`<label><input type="radio" name="q${i}" value="${j}" onchange="markResp(${i},${j})"> ${String.fromCharCode(65+j)}) ${o}</label>`).join('')}
+      </div>`;
+    c.appendChild(div);
+  });
+  updateProgress();
+}
+
+function markResp(qi, val) { respostas[qi] = val; updateProgress(); }
+
+function updateProgress() {
+  const done = respostas.filter(r => r !== null).length;
+  document.getElementById('pbar').style.width = (done/20*100)+'%';
+  document.getElementById('plabel').textContent = `${done} de 20 respondidas`;
+}
+
+function finalizarQuiz() {
+  const done = respostas.filter(r => r !== null).length;
+  if(done < 20 && !confirm(`Você respondeu ${done} de 20 questões. Finalizar assim mesmo?`)) return;
+  const nome = document.getElementById('f-nome').value.trim();
+  const mat = document.getElementById('f-mat').value.trim();
+  const turma = document.getElementById('f-turma').value.trim();
+  const webhook = document.getElementById('f-webhook').value.trim();
+  const ts = new Date().toISOString();
+  let pontos = 0;
+  const mc_prof = questoes.map((q,i) => {
+    const correta = respostas[i] === q.correta;
+    if(correta) pontos++;
+    return { questao:i+1, bloco:q.bloco, pergunta:q.q, resposta_idx:respostas[i], resposta_texto:respostas[i]!==null?q.opts[respostas[i]]:null, correta };
+  });
+  const payload_prof = { timestamp:ts, nome, matricula:mat, turma, modulo:'Casos de Uso – Aula Introdutória', pontuacao:pontos, total_mc:20, percentual:parseFloat(((pontos/20)*100).toFixed(1)), respostas_mc:mc_prof };
+  const mc_aluno = questoes.map((q,i) => ({ questao:i+1, bloco:q.bloco, pergunta:q.q, resposta_texto:respostas[i]!==null?q.opts[respostas[i]]:null }));
+  const payload_aluno = { timestamp:ts, nome, matricula:mat, turma, modulo:'Casos de Uso – Aula Introdutória', respostas_mc:mc_aluno };
+  if(webhook) {
+    fetch(webhook, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload_prof), mode:'no-cors' }).catch(()=>{});
+  }
+  document.getElementById('quiz-section').style.display = 'none';
+  const rs = document.getElementById('result-section');
+  rs.style.display = 'block';
+  const paStr = JSON.stringify(payload_aluno);
+  const maStr = JSON.stringify(mc_aluno);
+  rs.innerHTML = `
+    <div class="result-box">
+      <div style="font-size:40px;margin-bottom:10px">✅</div>
+      <strong>Suas respostas foram registradas!</strong><br/>
+      O resultado será divulgado pelo professor após a correção.<br/>
+      Baixe seu arquivo agora para conferir suas respostas quando o gabarito for liberado.
+    </div>
+    <div class="btn-group" style="margin-top:20px">
+      <button class="btn btn-primary" id="btnJson"><i class="ti ti-download"></i> Baixar JSON</button>
+      <button class="btn btn-outline" id="btnCsv"><i class="ti ti-file-spreadsheet"></i> Baixar CSV</button>
+    </div>`;
+  document.getElementById('btnJson').onclick = () => baixarJSON(paStr);
+  document.getElementById('btnCsv').onclick = () => baixarCSV(maStr, nome, mat, turma);
+}
+
+function baixarJSON(jsonStr) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([jsonStr], {type:'application/json'}));
+  a.download = 'respostas-casos-de-uso.json'; a.click();
+}
+
+function baixarCSV(mcStr, nome, mat, turma) {
+  const mc = JSON.parse(mcStr);
+  let csv = '\uFEFF' + 'Questao,Bloco,Pergunta,Resposta\r\n';
+  mc.forEach(r => {
+    csv += `"${r.questao}","${r.bloco}","${(r.pergunta||'').replace(/"/g,'""')}","${(r.resposta_texto||'').replace(/"/g,'""')}"\r\n`;
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
+  a.download = 'respostas-casos-de-uso.csv'; a.click();
+}
+</script>
+</body>
+</html>
