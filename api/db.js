@@ -16,7 +16,7 @@ export async function initDb() {
   const sql = getSql()
   await sql`
     CREATE TABLE IF NOT EXISTS aulas (
-      id   UUID PRIMARY KEY,
+      id   TEXT PRIMARY KEY,
       html TEXT NOT NULL,
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
