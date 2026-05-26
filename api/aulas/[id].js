@@ -1,12 +1,12 @@
-import { head } from '@vercel/blob'
+import { del, head } from '@vercel/blob'
 
 function validateLessonId(value) {
-  return /^[a-f0-9-]{36}$/i.test(value)
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(value)
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    res.setHeader('Allow', 'GET')
+  if (!['GET', 'DELETE'].includes(req.method)) {
+    res.setHeader('Allow', 'GET, DELETE')
     return res.status(405).json({ error: 'Método não permitido.' })
   }
 
@@ -24,9 +24,18 @@ export default async function handler(req, res) {
   }
 
   try {
-    const blob = await head(`aulas/${lessonId}.html`, {
+    const pathname = `aulas/${lessonId}.html`
+    const blob = await head(pathname, {
       token: process.env.BLOB_READ_WRITE_TOKEN,
     })
+
+    if (req.method === 'DELETE') {
+      await del(pathname, {
+        token: process.env.BLOB_READ_WRITE_TOKEN,
+      })
+
+      return res.status(200).json({ id: lessonId, deleted: true })
+    }
 
     const response = await fetch(blob.url)
     if (!response.ok) {
