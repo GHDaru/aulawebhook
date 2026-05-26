@@ -21,6 +21,19 @@ export async function initDb() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `
+  const idColumn = await sql`
+    SELECT data_type
+    FROM information_schema.columns
+    WHERE table_schema = current_schema()
+      AND table_name = 'aulas'
+      AND column_name = 'id'
+    LIMIT 1
+  `
+
+  if (idColumn.length && idColumn[0].data_type !== 'text') {
+    await sql`ALTER TABLE aulas ALTER COLUMN id TYPE TEXT USING id::text`
+  }
+
   return sql
 }
 
