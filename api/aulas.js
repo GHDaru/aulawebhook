@@ -1,7 +1,6 @@
-import { list, put } from '@vercel/blob'
+import { initDb } from './db.js'
 
 const MAX_HTML_SIZE_BYTES = 1_500_000
-const LESSONS_PREFIX = 'aulas/'
 
 function normalizeBaseName(filename) {
   if (typeof filename !== 'string') {
@@ -54,42 +53,19 @@ function parseJsonBody(body) {
   return body
 }
 
-function extractLessonSlug(pathname) {
-  const match = pathname.match(/^aulas\/(.+)\.html$/i)
-  return match ? match[1] : null
-}
-
 async function listLessons(req, res) {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    return res.status(500).json({
-      error: 'Variável BLOB_READ_WRITE_TOKEN não configurada no ambiente.',
-    })
-  }
-
   try {
-    const response = await list({
-      prefix: LESSONS_PREFIX,
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-    })
-
+    const sql = await initDb()
+    const rows = await sql`SELECT id, created_at FROM aulas ORDER BY created_at DESC`
     const origin = resolveOrigin(req)
-    const lessons = response.blobs
-      .map((blob) => {
-        const slug = extractLessonSlug(blob.pathname)
-        if (!slug) {
-          return null
-        }
 
-        return {
-          id: slug,
-          slug,
-          title: formatLessonTitle(slug),
-          studentUrl: `${origin}/student/${slug}`,
-          uploadedAt: blob.uploadedAt,
-        }
-      })
-      .filter(Boolean)
-      .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))
+    const lessons = rows.map((row) => ({
+      id: row.id,
+      slug: row.id,
+      title: formatLessonTitle(row.id),
+      studentUrl: `${origin}/student/${row.id}`,
+      uploadedAt: row.created_at,
+    }))
 
     return res.status(200).json({ lessons })
   } catch (error) {
@@ -120,40 +96,22 @@ async function createLesson(req, res) {
       return res.status(400).json({ error: 'Envie um arquivo com extensão .html.' })
     }
 
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      return res.status(500).json({
-        error: 'Variável BLOB_READ_WRITE_TOKEN não configurada no ambiente.',
-      })
-    }
-
-    const existingLessons = await list({
-      prefix: LESSONS_PREFIX,
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-    })
-
-    const existingSlugs = new Set(
-      existingLessons.blobs
-        .map((blob) => extractLessonSlug(blob.pathname))
-        .filter(Boolean),
-    )
-
+    const sql = await initDb()
     const baseSlug = slugifyLessonName(fileName)
     let lessonId = baseSlug
     let suffix = 2
 
-    while (existingSlugs.has(lessonId)) {
+    while (true) {
+      const existing = await sql`SELECT 1 FROM aulas WHERE id = ${lessonId} LIMIT 1`
+      if (!existing.length) {
+        break
+      }
+
       lessonId = `${baseSlug}-${suffix}`
       suffix += 1
     }
 
-    const path = `${LESSONS_PREFIX}${lessonId}.html`
-
-    await put(path, html, {
-      access: 'public',
-      addRandomSuffix: false,
-      contentType: 'text/html; charset=utf-8',
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-    })
+    await sql`INSERT INTO aulas (id, html) VALUES (${lessonId}, ${html})`
 
     return res.status(201).json({
       id: lessonId,

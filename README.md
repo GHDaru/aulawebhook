@@ -5,8 +5,8 @@ Interface para publicar aulas em HTML, gerar portais acadêmicos com visual Esme
 ## Requisitos
 
 - Node.js 20+
-- Conta Vercel com Blob Storage habilitado
-- Variável de ambiente `BLOB_READ_WRITE_TOKEN`
+- Banco PostgreSQL (Neon recomendado)
+- Variável de ambiente `DATABASE_URL`
 
 ## Desenvolvimento local
 
@@ -28,12 +28,12 @@ Abra `http://localhost:5173`.
 ## Endpoints
 
 - `GET /api/aulas` — lista os portais acadêmicos publicados.
-- `POST /api/aulas` — recebe JSON `{ filename, html }`, salva no Vercel Blob e retorna o link público do aluno.
+- `POST /api/aulas` — recebe JSON `{ filename, html }`, salva no PostgreSQL e retorna o link público do aluno.
 - `GET /api/aulas/:id` — carrega o HTML da aula publicada.
 - `DELETE /api/aulas/:id` — remove um portal publicado.
 
 ## Deploy na Vercel
 
-1. Configure a variável de ambiente `BLOB_READ_WRITE_TOKEN`.
+1. Configure a variável de ambiente `DATABASE_URL`.
 2. Deploy do projeto normalmente.
 3. Os rewrites de `/student/:id` e `/aula/:id` para `index.html` já estão em `vercel.json`.
