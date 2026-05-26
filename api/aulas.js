@@ -1,4 +1,4 @@
-import { put } from '@vercel/blob'
+import { initDb } from './db.js'
 
 const MAX_HTML_SIZE_BYTES = 1_500_000
 
@@ -44,21 +44,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Envie um arquivo com extensão .html.' })
     }
 
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      return res.status(500).json({
-        error: 'Variável BLOB_READ_WRITE_TOKEN não configurada no ambiente.',
-      })
-    }
-
     const lessonId = crypto.randomUUID()
-    const path = `aulas/${lessonId}.html`
 
-    await put(path, html, {
-      access: 'public',
-      addRandomSuffix: false,
-      contentType: 'text/html; charset=utf-8',
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-    })
+    const sql = await initDb()
+    await sql`INSERT INTO aulas (id, html) VALUES (${lessonId}, ${html})`
 
     return res.status(201).json({
       id: lessonId,

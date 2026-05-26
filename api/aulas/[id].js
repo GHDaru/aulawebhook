@@ -1,4 +1,4 @@
-import { head } from '@vercel/blob'
+import { initDb } from '../db.js'
 
 function validateLessonId(value) {
   return /^[a-f0-9-]{36}$/i.test(value)
@@ -17,27 +17,20 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Identificador de aula inválido.' })
   }
 
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    return res.status(500).json({
-      error: 'Variável BLOB_READ_WRITE_TOKEN não configurada no ambiente.',
-    })
-  }
-
   try {
-    const blob = await head(`aulas/${lessonId}.html`, {
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-    })
+    const sql = await initDb()
+    const rows = await sql`SELECT html FROM aulas WHERE id = ${lessonId} LIMIT 1`
 
-    const response = await fetch(blob.url)
-    if (!response.ok) {
+    if (!rows.length) {
       return res.status(404).json({ error: 'Aula não encontrada.' })
     }
 
-    const html = await response.text()
-
     res.setHeader('Cache-Control', 'no-store')
-    return res.status(200).json({ id: lessonId, html })
-  } catch {
-    return res.status(404).json({ error: 'Aula não encontrada.' })
+    return res.status(200).json({ id: lessonId, html: rows[0].html })
+  } catch (error) {
+    return res.status(500).json({
+      error: 'Erro ao carregar a aula.',
+      details: error?.message,
+    })
   }
 }
