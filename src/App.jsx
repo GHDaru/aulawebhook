@@ -9,7 +9,6 @@ const DATE_FORMATTER = new Intl.DateTimeFormat('pt-BR', {
 const MENU_ITEMS = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'disciplinas', label: 'Disciplinas' },
-  { key: 'aulas', label: 'Aulas' },
   { key: 'alunos', label: 'Alunos' },
   { key: 'matriculas', label: 'Matrículas' },
   { key: 'notas', label: 'Notas' },
@@ -457,7 +456,7 @@ function PortalView({ user, onLogout }) {
       await parseResponse(response)
       setLessonTitle('')
       setLessonFile(null)
-    }, 'aulas')
+    }, 'disciplinas')
   }
 
   const handleCreateAluno = (event) => {
@@ -715,17 +714,6 @@ function PortalView({ user, onLogout }) {
                   <button className="btn" type="submit">Cadastrar</button>
                 </form>
 
-                <h2>Disciplinas ativas</h2>
-                <ul className="list-simple">
-                  {disciplines.map((discipline) => (
-                    <li key={discipline.id}>{discipline.title} ({discipline.lessons.length} aulas)</li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            {activeModule === 'aulas' && (
-              <section className="card">
                 <h2>Incluir aula em disciplina</h2>
                 <form className="form-grid" onSubmit={handleUploadLesson}>
                   <select
@@ -753,27 +741,40 @@ function PortalView({ user, onLogout }) {
                   <button className="btn" type="submit">Publicar aula</button>
                 </form>
 
-                <h2>Aulas por disciplina</h2>
+                <h2>Disciplinas ativas</h2>
                 {disciplines.length === 0 ? (
                   <p className="helper-text">Nenhuma disciplina disponível para o seu perfil.</p>
                 ) : (
-                  <ul className="list-simple">
+                  <div className="discipline-accordion-list">
                     {disciplines.map((discipline) => (
-                      <li key={discipline.id}>
-                        <strong>{discipline.title}</strong> ({discipline.lessons.length} aulas)
-                        {discipline.lessons.length > 0 && (
-                          <ul className="list-simple">
-                            {discipline.lessons.map((lesson) => (
-                              <li key={lesson.id}>
-                                {lesson.order}.{' '}
-                                <a href={lesson.studentUrl} target="_blank" rel="noreferrer">{lesson.title}</a>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </li>
+                      <details key={discipline.id} className="discipline-accordion">
+                        <summary>
+                          <strong>{discipline.title}</strong> ({discipline.lessons.length} aulas)
+                        </summary>
+                        <div className="discipline-accordion-content">
+                          <button
+                            className="btn btn-secondary"
+                            type="button"
+                            onClick={() => setSelectedDiscipline(discipline.id)}
+                          >
+                            Selecionar para publicar aula
+                          </button>
+                          {discipline.lessons.length > 0 ? (
+                            <ul className="list-simple">
+                              {discipline.lessons.map((lesson) => (
+                                <li key={lesson.id}>
+                                  {lesson.order}.{' '}
+                                  <a href={lesson.studentUrl} target="_blank" rel="noreferrer">{lesson.title}</a>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="helper-text">Sem aulas cadastradas nesta disciplina.</p>
+                          )}
+                        </div>
+                      </details>
                     ))}
-                  </ul>
+                  </div>
                 )}
               </section>
             )}
