@@ -62,7 +62,7 @@ Abra `http://localhost:5173`.
 - `admin` ou matrícula `0001` (perfil `admin`)
 - `professor` ou matrícula `0002` (perfil `professor`)
 - `aluno-demo` ou matrícula `20260001` (perfil `aluno`)
-- Senha inicial para todos: `123456`
+- Senha inicial para todos: `Portal@2026`
 
 ## Endpoints
 

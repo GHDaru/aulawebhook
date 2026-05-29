@@ -93,7 +93,7 @@ function LoginView({ onLogin }) {
         </button>
 
         <p className="helper-text">
-          Primeiro acesso padrão: admin/0001, professor/0002, aluno demo/20260001 com senha <strong>123456</strong>.
+          Primeiro acesso padrão: admin/0001, professor/0002, aluno-demo/20260001 com senha <strong>Portal@2026</strong>.
         </p>
       </form>
     </main>
@@ -282,7 +282,7 @@ function PortalView({ user, onLogout }) {
   const [alunoNome, setAlunoNome] = useState('')
   const [alunoMatricula, setAlunoMatricula] = useState('')
   const [alunoEmail, setAlunoEmail] = useState('')
-  const [alunoSenhaPadrao, setAlunoSenhaPadrao] = useState('123456')
+  const [alunoSenhaPadrao, setAlunoSenhaPadrao] = useState('Portal@2026')
   const [bulkCsv, setBulkCsv] = useState('')
 
   const [matriculaAlunoId, setMatriculaAlunoId] = useState('')
@@ -321,14 +321,20 @@ function PortalView({ user, onLogout }) {
     notas.forEach((item) => {
       const key = item.disciplina_title
       const current = map.get(key) || { disciplina: key, notas: [], progressos: [] }
-      current.notas.push(Number(item.nota))
+      const parsedNota = Number(item.nota)
+      if (Number.isFinite(parsedNota)) {
+        current.notas.push(parsedNota)
+      }
       map.set(key, current)
     })
 
     progresso.forEach((item) => {
       const key = item.disciplina_title
       const current = map.get(key) || { disciplina: key, notas: [], progressos: [] }
-      current.progressos.push(Number(item.percentual))
+      const parsedPercentual = Number(item.percentual)
+      if (Number.isFinite(parsedPercentual)) {
+        current.progressos.push(parsedPercentual)
+      }
       map.set(key, current)
     })
 
@@ -586,7 +592,7 @@ function PortalView({ user, onLogout }) {
     <div className="portal-layout">
       <aside className="sidebar">
         <div>
-          <p className="sidebar-brand">Aula Webhook</p>
+          <p className="sidebar-brand">Portal Acadêmico</p>
           <p className="helper-text">{user.nome} · {user.role}</p>
         </div>
 
@@ -751,7 +757,7 @@ function PortalView({ user, onLogout }) {
                 <form className="form-grid" onSubmit={handleBulkCadastro}>
                   <textarea
                     rows={5}
-                    placeholder="nome,matricula,email&#10;Maria,20260003,maria@mail.com"
+                    placeholder={'nome,matricula,email\nMaria,20260003,maria@mail.com'}
                     value={bulkCsv}
                     onChange={(event) => setBulkCsv(event.target.value)}
                   />
@@ -810,7 +816,17 @@ function PortalView({ user, onLogout }) {
                     {disciplines.map((discipline) => <option key={discipline.id} value={discipline.id}>{discipline.title}</option>)}
                   </select>
                   <input type="text" placeholder="Avaliação" value={avaliacao} onChange={(event) => setAvaliacao(event.target.value)} required />
-                  <input type="number" step="0.01" min="0" max="10" placeholder="Nota" value={notaValor} onChange={(event) => setNotaValor(event.target.value)} required />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="10"
+                    placeholder="Nota"
+                    aria-label="Nota da avaliação"
+                    value={notaValor}
+                    onChange={(event) => setNotaValor(event.target.value)}
+                    required
+                  />
                   <button className="btn" type="submit">Salvar nota</button>
                 </form>
 
