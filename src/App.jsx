@@ -502,30 +502,24 @@ function StudentView({ disciplineId, lessonId }) {
           </div>
 
           <div className="actions">
-            <a
-              className={`btn btn-secondary ${!metadata.navigation.previousUrl ? 'btn-disabled' : ''}`}
-              href={metadata.navigation.previousUrl || '#'}
-              aria-disabled={!metadata.navigation.previousUrl}
-              onClick={(event) => {
-                if (!metadata.navigation.previousUrl) {
-                  event.preventDefault()
-                }
-              }}
-            >
-              Aula anterior
-            </a>
-            <a
-              className={`btn btn-secondary ${!metadata.navigation.nextUrl ? 'btn-disabled' : ''}`}
-              href={metadata.navigation.nextUrl || '#'}
-              aria-disabled={!metadata.navigation.nextUrl}
-              onClick={(event) => {
-                if (!metadata.navigation.nextUrl) {
-                  event.preventDefault()
-                }
-              }}
-            >
-              Próxima aula
-            </a>
+            {metadata.navigation.previousUrl ? (
+              <a className="btn btn-secondary" href={metadata.navigation.previousUrl}>
+                Aula anterior
+              </a>
+            ) : (
+              <button className="btn btn-secondary btn-disabled" type="button" disabled>
+                Aula anterior
+              </button>
+            )}
+            {metadata.navigation.nextUrl ? (
+              <a className="btn btn-secondary" href={metadata.navigation.nextUrl}>
+                Próxima aula
+              </a>
+            ) : (
+              <button className="btn btn-secondary btn-disabled" type="button" disabled>
+                Próxima aula
+              </button>
+            )}
           </div>
         </header>
       )}

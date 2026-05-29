@@ -53,8 +53,8 @@ async function addLesson(req, res, disciplineId) {
     }
 
     const slugSource = fileName || title || 'aula'
-    const baseLessonId = slugify(slugSource, 'aula')
-    let lessonId = baseLessonId
+    const baseSlug = slugify(slugSource, 'aula')
+    let lessonId = baseSlug
     let suffix = 2
 
     while (true) {
@@ -63,7 +63,7 @@ async function addLesson(req, res, disciplineId) {
         break
       }
 
-      lessonId = `${baseLessonId}-${suffix}`
+      lessonId = `${baseSlug}-${suffix}`
       suffix += 1
     }
 
@@ -74,9 +74,8 @@ async function addLesson(req, res, disciplineId) {
     `
 
     const lessonOrder = Number(orderRows[0]?.max_order ?? 0) + 1
-    const lessonTitle = typeof title === 'string' && title.trim()
-      ? title.trim()
-      : formatLessonTitle(baseLessonId)
+    const trimmedTitle = typeof title === 'string' ? title.trim() : ''
+    const lessonTitle = trimmedTitle || formatLessonTitle(baseSlug)
 
     await sql`
       INSERT INTO aulas (id, html, disciplina_id, lesson_order, title)
