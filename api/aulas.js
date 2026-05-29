@@ -75,6 +75,18 @@ function extractActor(req) {
   return { userId, userRole }
 }
 
+function validateManagerActor(actor) {
+  if (!['admin', 'professor'].includes(actor.userRole)) {
+    return { status: 403, error: 'Apenas professor ou admin podem cadastrar disciplinas.' }
+  }
+
+  if (actor.userRole === 'professor' && !actor.userId) {
+    return { status: 401, error: 'Professor não autenticado.' }
+  }
+
+  return null
+}
+
 function buildStudentUrl(origin, disciplineId, lessonId) {
   return `${origin}/student/${encodeURIComponent(disciplineId)}/${encodeURIComponent(lessonId)}`
 }
@@ -141,14 +153,8 @@ async function createDiscipline(req, res) {
     const body = parseJsonBody(req.body)
     const { title } = body
     const actor = extractActor(req)
-
-    if (!['admin', 'professor'].includes(actor.userRole)) {
-      return res.status(403).json({ error: 'Apenas professor ou admin podem cadastrar disciplinas.' })
-    }
-
-    if (actor.userRole === 'professor' && !actor.userId) {
-      return res.status(401).json({ error: 'Professor não autenticado.' })
-    }
+    const actorError = validateManagerActor(actor)
+    if (actorError) return res.status(actorError.status).json({ error: actorError.error })
 
     if (!title || typeof title !== 'string' || title.trim().length < 3) {
       return res.status(400).json({ error: 'Informe o nome da disciplina com pelo menos 3 caracteres.' })
