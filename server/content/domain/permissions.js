@@ -1,13 +1,17 @@
 import { ForbiddenError } from './errors.js'
 
+function validateProfessorIdentification(actor) {
+  if (actor.userRole === 'professor' && !actor.userId) {
+    throw new ForbiddenError('Identificação do professor é obrigatória.')
+  }
+}
+
 function ensureViewerActor(actor) {
   if (actor.userRole === 'aluno') {
     throw new ForbiddenError('Alunos não podem visualizar a gestão de disciplinas.')
   }
 
-  if (actor.userRole === 'professor' && !actor.userId) {
-    throw new ForbiddenError('Identificação do professor é obrigatória.')
-  }
+  validateProfessorIdentification(actor)
 }
 
 function ensureManagerActor(actor, message) {
@@ -15,9 +19,7 @@ function ensureManagerActor(actor, message) {
     throw new ForbiddenError(message)
   }
 
-  if (actor.userRole === 'professor' && !actor.userId) {
-    throw new ForbiddenError('Identificação do professor é obrigatória.')
-  }
+  validateProfessorIdentification(actor)
 }
 
 function canManageDiscipline(actor, discipline) {
