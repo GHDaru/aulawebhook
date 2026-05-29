@@ -30,7 +30,7 @@ function pickAvailableSlug(baseSlug, existingSlugs) {
   const taken = new Set(existingSlugs)
 
   for (let index = 0; index < MAX_SLUG_ATTEMPTS; index += 1) {
-    const candidate = index === 0 ? baseSlug : `${baseSlug}-${index + 1}`
+    const candidate = index === 0 ? baseSlug : `${baseSlug}-${index}`
     if (!taken.has(candidate)) {
       return candidate
     }

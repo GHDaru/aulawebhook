@@ -79,7 +79,7 @@ async function publishLesson({ disciplineId, filename, html, title, actor, origi
     throw new ForbiddenError('Você só pode administrar aulas das suas disciplinas.')
   }
 
-  const slugSource = filename || title || 'aula'
+  const slugSource = filename || title || DEFAULT_LESSON_SLUG
   const baseSlug = slugify(slugSource, DEFAULT_LESSON_SLUG)
   const lessonId = pickAvailableSlug(baseSlug, await repository.listLessonSlugs(baseSlug))
 
