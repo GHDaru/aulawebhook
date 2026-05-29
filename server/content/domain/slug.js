@@ -27,8 +27,9 @@ function validateSlug(value) {
 function pickAvailableSlug(baseSlug, existingSlugs) {
   const taken = new Set(existingSlugs)
 
-  for (let suffix = 1; suffix <= MAX_SLUG_ATTEMPTS; suffix += 1) {
-    const candidate = suffix === 1 ? baseSlug : `${baseSlug}-${suffix}`
+  for (let index = 0; index < MAX_SLUG_ATTEMPTS; index += 1) {
+    const suffix = index + 1
+    const candidate = index === 0 ? baseSlug : `${baseSlug}-${suffix}`
     if (!taken.has(candidate)) {
       return candidate
     }

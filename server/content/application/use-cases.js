@@ -185,7 +185,11 @@ async function removeContent({ contentId, actor, repository }) {
       throw new ForbiddenError('Você só pode administrar aulas das suas disciplinas.')
     }
 
-    await repository.deleteDiscipline(contentId)
+    const deleted = await repository.deleteDiscipline(contentId)
+    if (!deleted) {
+      throw new NotFoundError('Disciplina ou aula não encontrada.')
+    }
+
     return { id: contentId, deleted: true, type: 'discipline' }
   }
 

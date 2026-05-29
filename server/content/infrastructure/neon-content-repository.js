@@ -175,7 +175,7 @@ async function createContentRepository() {
     },
 
     async deleteDiscipline(id) {
-      await sql`
+      const rows = await sql`
         WITH deleted_lessons AS (
           DELETE FROM aulas
           WHERE disciplina_id = ${id}
@@ -189,6 +189,8 @@ async function createContentRepository() {
         SELECT COUNT(*)::int AS total
         FROM deleted_discipline
       `
+
+      return Number(rows[0]?.total ?? 0) > 0
     },
 
     async deleteLegacyLesson(id) {
