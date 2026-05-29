@@ -1,5 +1,5 @@
 import { initDb } from './db.js'
-import { extractActor, validateManagerActor, validateProfessorActor } from './authz.js'
+import { extractActor, validateDisciplineViewer, validateManagerActor } from './authz.js'
 
 const MAX_HTML_SIZE_BYTES = 1_500_000
 const MAX_SLUG_ATTEMPTS = 100
@@ -65,12 +65,8 @@ async function listDisciplines(req, res) {
     const origin = resolveOrigin(req)
     const actor = extractActor(req)
 
-    if (actor.userRole === 'aluno') {
-      return res.status(403).json({ error: 'Alunos não podem visualizar a gestão de disciplinas.' })
-    }
-
-    const professorError = validateProfessorActor(actor)
-    if (professorError) return res.status(professorError.status).json({ error: professorError.error })
+    const viewerError = validateDisciplineViewer(actor)
+    if (viewerError) return res.status(viewerError.status).json({ error: viewerError.error })
 
     const disciplineQuery = actor.userRole === 'professor'
       ? sql`SELECT id, title, professor_id, created_at FROM disciplinas WHERE professor_id = ${actor.userId} ORDER BY created_at DESC`

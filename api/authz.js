@@ -18,7 +18,7 @@ function extractActor(req) {
 
 function validateProfessorActor(actor) {
   if (actor.userRole === 'professor' && !actor.userId) {
-    return { status: 401, error: 'Professor não autenticado.' }
+    return { status: 403, error: 'Identificação do professor é obrigatória.' }
   }
 
   return null
@@ -35,4 +35,12 @@ function validateManagerActor(actor, message) {
   return null
 }
 
-export { extractActor, validateProfessorActor, validateManagerActor }
+function validateDisciplineViewer(actor) {
+  if (actor.userRole === 'aluno') {
+    return { status: 403, error: 'Alunos não podem visualizar a gestão de disciplinas.' }
+  }
+
+  return validateProfessorActor(actor)
+}
+
+export { extractActor, validateProfessorActor, validateManagerActor, validateDisciplineViewer }
