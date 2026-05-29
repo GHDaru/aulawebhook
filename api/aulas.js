@@ -56,7 +56,7 @@ function parseJsonBody(body) {
 
 function normalizeRole(role) {
   if (role === 'admin' || role === 'professor' || role === 'aluno') return role
-  return 'aluno'
+  return ''
 }
 
 function firstValue(value) {
@@ -64,12 +64,12 @@ function firstValue(value) {
   return value
 }
 
-function extractActor(req, body = {}) {
+function extractActor(req) {
   const userId = String(
-    firstValue(req.headers['x-user-id']) || firstValue(req.query.userId) || body.userId || '',
+    firstValue(req.headers['x-user-id']) || '',
   ).trim()
   const userRole = normalizeRole(
-    String(firstValue(req.headers['x-user-role']) || firstValue(req.query.userRole) || body.userRole || '').trim(),
+    String(firstValue(req.headers['x-user-role']) || '').trim(),
   )
 
   return { userId, userRole }
@@ -140,7 +140,7 @@ async function createDiscipline(req, res) {
   try {
     const body = parseJsonBody(req.body)
     const { title } = body
-    const actor = extractActor(req, body)
+    const actor = extractActor(req)
 
     if (!['admin', 'professor'].includes(actor.userRole)) {
       return res.status(403).json({ error: 'Apenas professor ou admin podem cadastrar disciplinas.' })

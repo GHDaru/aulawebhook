@@ -427,7 +427,7 @@ function PortalView({ user, onLogout }) {
       const response = await fetch('/api/aulas', {
         method: 'POST',
         headers: authHeaders,
-        body: JSON.stringify({ title: disciplineTitle, userId: user.id, userRole: user.role }),
+        body: JSON.stringify({ title: disciplineTitle }),
       })
       await parseResponse(response)
       setDisciplineTitle('')
@@ -449,8 +449,6 @@ function PortalView({ user, onLogout }) {
           filename: lessonFile.name,
           html,
           title: lessonTitle || undefined,
-          userId: user.id,
-          userRole: user.role,
         }),
       })
       await parseResponse(response)
