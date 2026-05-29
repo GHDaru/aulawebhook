@@ -54,6 +54,27 @@ function parseJsonBody(body) {
   return body
 }
 
+function normalizeRole(role) {
+  if (role === 'admin' || role === 'professor' || role === 'aluno') return role
+  return 'aluno'
+}
+
+function firstValue(value) {
+  if (Array.isArray(value)) return value[0]
+  return value
+}
+
+function extractActor(req, body = {}) {
+  const userId = String(
+    firstValue(req.headers['x-user-id']) || firstValue(req.query.userId) || body.userId || '',
+  ).trim()
+  const userRole = normalizeRole(
+    String(firstValue(req.headers['x-user-role']) || firstValue(req.query.userRole) || body.userRole || '').trim(),
+  )
+
+  return { userId, userRole }
+}
+
 function buildStudentUrl(origin, disciplineId, lessonId) {
   return `${origin}/student/${encodeURIComponent(disciplineId)}/${encodeURIComponent(lessonId)}`
 }
@@ -62,9 +83,18 @@ async function listDisciplines(req, res) {
   try {
     const sql = await initDb()
     const origin = resolveOrigin(req)
+    const actor = extractActor(req)
+
+    if (actor.userRole === 'professor' && !actor.userId) {
+      return res.status(401).json({ error: 'Professor não autenticado.' })
+    }
+
+    const disciplineQuery = actor.userRole === 'professor'
+      ? sql`SELECT id, title, professor_id, created_at FROM disciplinas WHERE professor_id = ${actor.userId} ORDER BY created_at DESC`
+      : sql`SELECT id, title, professor_id, created_at FROM disciplinas ORDER BY created_at DESC`
 
     const [disciplines, rows] = await Promise.all([
-      sql`SELECT id, title, created_at FROM disciplinas ORDER BY created_at DESC`,
+      disciplineQuery,
       sql`
         SELECT id, disciplina_id, title, lesson_order, created_at
         FROM aulas
@@ -92,6 +122,7 @@ async function listDisciplines(req, res) {
       id: discipline.id,
       slug: discipline.id,
       title: discipline.title,
+      professorId: discipline.professor_id || null,
       createdAt: discipline.created_at,
       lessons: lessonsByDiscipline.get(discipline.id) || [],
     }))
@@ -107,7 +138,17 @@ async function listDisciplines(req, res) {
 
 async function createDiscipline(req, res) {
   try {
-    const { title } = parseJsonBody(req.body)
+    const body = parseJsonBody(req.body)
+    const { title } = body
+    const actor = extractActor(req, body)
+
+    if (!['admin', 'professor'].includes(actor.userRole)) {
+      return res.status(403).json({ error: 'Apenas professor ou admin podem cadastrar disciplinas.' })
+    }
+
+    if (actor.userRole === 'professor' && !actor.userId) {
+      return res.status(401).json({ error: 'Professor não autenticado.' })
+    }
 
     if (!title || typeof title !== 'string' || title.trim().length < 3) {
       return res.status(400).json({ error: 'Informe o nome da disciplina com pelo menos 3 caracteres.' })
@@ -132,12 +173,14 @@ async function createDiscipline(req, res) {
       return res.status(409).json({ error: 'Não foi possível gerar um identificador único para a disciplina.' })
     }
 
-    await sql`INSERT INTO disciplinas (id, title) VALUES (${disciplineId}, ${title.trim()})`
+    const professorId = actor.userRole === 'professor' ? actor.userId : null
+    await sql`INSERT INTO disciplinas (id, title, professor_id) VALUES (${disciplineId}, ${title.trim()}, ${professorId})`
 
     return res.status(201).json({
       id: disciplineId,
       slug: disciplineId,
       title: title.trim(),
+      professorId,
       lessons: [],
     })
   } catch (error) {
@@ -161,4 +204,4 @@ export default async function handler(req, res) {
   return res.status(405).json({ error: 'Método não permitido.' })
 }
 
-export { MAX_HTML_SIZE_BYTES, parseJsonBody, slugify, formatLessonTitle, buildStudentUrl }
+export { MAX_HTML_SIZE_BYTES, parseJsonBody, slugify, formatLessonTitle, buildStudentUrl, extractActor }

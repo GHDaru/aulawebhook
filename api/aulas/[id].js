@@ -1,6 +1,7 @@
 import {
   MAX_HTML_SIZE_BYTES,
   buildStudentUrl,
+  extractActor,
   formatLessonTitle,
   parseJsonBody,
   slugify,
@@ -27,7 +28,17 @@ function toSingleQueryValue(value) {
 
 async function addLesson(req, res, disciplineId) {
   try {
-    const { filename, html, title } = parseJsonBody(req.body)
+    const body = parseJsonBody(req.body)
+    const { filename, html, title } = body
+    const actor = extractActor(req, body)
+
+    if (!['admin', 'professor'].includes(actor.userRole)) {
+      return res.status(403).json({ error: 'Apenas professor ou admin podem administrar aulas.' })
+    }
+
+    if (actor.userRole === 'professor' && !actor.userId) {
+      return res.status(401).json({ error: 'Professor não autenticado.' })
+    }
 
     if (!validateSlug(disciplineId)) {
       return res.status(400).json({ error: 'Identificador de disciplina inválido.' })
@@ -48,10 +59,14 @@ async function addLesson(req, res, disciplineId) {
     }
 
     const sql = await initDb()
-    const discipline = await sql`SELECT id, title FROM disciplinas WHERE id = ${disciplineId} LIMIT 1`
+    const discipline = await sql`SELECT id, title, professor_id FROM disciplinas WHERE id = ${disciplineId} LIMIT 1`
 
     if (!discipline.length) {
       return res.status(404).json({ error: 'Disciplina não encontrada.' })
+    }
+
+    if (actor.userRole === 'professor' && discipline[0].professor_id !== actor.userId) {
+      return res.status(403).json({ error: 'Você só pode administrar aulas das suas disciplinas.' })
     }
 
     const slugSource = fileName || title || 'aula'
@@ -207,9 +222,19 @@ async function deleteDisciplineOrLegacy(req, res, lessonOrDisciplineId) {
     }
 
     const sql = await initDb()
+    const actor = extractActor(req)
 
-    const discipline = await sql`SELECT id FROM disciplinas WHERE id = ${lessonOrDisciplineId} LIMIT 1`
+    const discipline = await sql`SELECT id, professor_id FROM disciplinas WHERE id = ${lessonOrDisciplineId} LIMIT 1`
     if (discipline.length) {
+      if (!['admin', 'professor'].includes(actor.userRole)) {
+        return res.status(403).json({ error: 'Apenas professor ou admin podem administrar aulas.' })
+      }
+      if (actor.userRole === 'professor' && !actor.userId) {
+        return res.status(401).json({ error: 'Professor não autenticado.' })
+      }
+      if (actor.userRole === 'professor' && discipline[0].professor_id !== actor.userId) {
+        return res.status(403).json({ error: 'Você só pode administrar aulas das suas disciplinas.' })
+      }
       await sql`DELETE FROM aulas WHERE disciplina_id = ${lessonOrDisciplineId}`
       await sql`DELETE FROM disciplinas WHERE id = ${lessonOrDisciplineId}`
       return res.status(200).json({ id: lessonOrDisciplineId, deleted: true, type: 'discipline' })
