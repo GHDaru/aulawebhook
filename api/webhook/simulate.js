@@ -1,4 +1,5 @@
-import { initAcademicoDb, processWebhookEvent } from '../academico-core.js'
+import { findLatestAlunoAndDisciplinaIds } from '../../server/academic/application/use-cases.js'
+import { processWebhookEvent } from '../../server/integrations/application/use-cases.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -7,19 +8,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    const sql = await initAcademicoDb()
-    const [alunoRows, disciplinaRows] = await Promise.all([
-      sql`SELECT id FROM alunos ORDER BY created_at DESC LIMIT 1`,
-      sql`SELECT id FROM disciplinas ORDER BY created_at DESC LIMIT 1`,
-    ])
+    const { alunoId, disciplinaId } = await findLatestAlunoAndDisciplinaIds()
 
-    if (!alunoRows.length || !disciplinaRows.length) {
+    if (!alunoId || !disciplinaId) {
       return res.status(400).json({ error: 'Cadastre ao menos um aluno e uma disciplina para simular webhook.' })
     }
 
     const payload = {
-      alunoId: alunoRows[0].id,
-      disciplinaId: disciplinaRows[0].id,
+      alunoId,
+      disciplinaId,
       avaliacao: 'Simulação webhook',
       nota: 8.5,
     }

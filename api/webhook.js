@@ -1,4 +1,5 @@
-import { parseJsonBody, processWebhookEvent } from './academico-core.js'
+import { processWebhookEvent } from '../server/integrations/application/use-cases.js'
+import { parseJsonBody } from '../server/shared/json.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
