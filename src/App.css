@@ -228,6 +228,7 @@ input[type='file'] {
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
+  min-height: var(--lesson-nav-height);
   padding: 18px;
   border-bottom: 1px solid rgba(13, 98, 71, 0.12);
   background: rgba(244, 251, 247, 0.9);

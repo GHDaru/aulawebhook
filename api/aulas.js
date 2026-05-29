@@ -54,7 +54,7 @@ function parseJsonBody(body) {
 }
 
 function buildStudentUrl(origin, disciplineId, lessonId) {
-  return `${origin}/student/${disciplineId}/${lessonId}`
+  return `${origin}/student/${encodeURIComponent(disciplineId)}/${encodeURIComponent(lessonId)}`
 }
 
 async function listDisciplines(req, res) {

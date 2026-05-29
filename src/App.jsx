@@ -439,7 +439,8 @@ function StudentView({ disciplineId, lessonId }) {
       setError('')
 
       try {
-        const endpoint = disciplineId
+        const hasDisciplineRoute = typeof disciplineId === 'string' && disciplineId.trim().length > 0
+        const endpoint = hasDisciplineRoute
           ? `/api/aulas/${encodeURIComponent(disciplineId)}?lesson=${encodeURIComponent(lessonId)}`
           : `/api/aulas/${encodeURIComponent(lessonId)}`
 
