@@ -4,6 +4,10 @@ Interface para administrar disciplinas, incluir aulas em HTML e compartilhar lin
 
 Agora o projeto também inclui um **Portal Acadêmico** com login, sidebar por módulos, cadastro de alunos, matrículas, notas, progresso, certidões e integrações por webhook.
 
+## Arquitetura
+
+- Visão de domínio e migração incremental para DDD + Hexagonal: [`/docs/ddd-hexagonal.md`](./docs/ddd-hexagonal.md)
+
 ## Requisitos
 
 - Node.js 20+
