@@ -202,7 +202,7 @@ function TeacherView() {
           </div>
           <div className="stat-card">
             <span className="stat-label">Rota pública</span>
-            <strong>/student/.../... </strong>
+            <strong>/student/.../...</strong>
           </div>
         </div>
       </section>

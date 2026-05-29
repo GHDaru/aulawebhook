@@ -2,6 +2,7 @@
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   color: #10261d;
   background: #f3f8f4;
+  --lesson-nav-height: 110px;
 }
 
 * {
@@ -234,7 +235,7 @@ input[type='file'] {
 
 .full-lesson {
   width: 100%;
-  height: calc(100vh - 110px);
+  height: calc(100vh - var(--lesson-nav-height));
 }
 
 .full-lesson iframe {
