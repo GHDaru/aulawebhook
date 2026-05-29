@@ -2,7 +2,7 @@ import { createDiscipline } from '../domain/discipline.js'
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../domain/errors.js'
 import { createLesson, formatLessonTitle, validateHtmlContent, validateLessonFilename } from '../domain/lesson.js'
 import { canManageDiscipline, ensureManagerActor, ensureViewerActor } from '../domain/permissions.js'
-import { pickAvailableSlug, slugify, validateSlug } from '../domain/slug.js'
+import { DEFAULT_DISCIPLINE_SLUG, DEFAULT_LESSON_SLUG, pickAvailableSlug, slugify, validateSlug } from '../domain/slug.js'
 import { buildStudentUrl } from '../infrastructure/http.js'
 
 async function listDisciplines({ actor, origin, repository }) {
@@ -43,7 +43,7 @@ async function listDisciplines({ actor, origin, repository }) {
 async function registerDiscipline({ title, actor, repository }) {
   ensureManagerActor(actor, 'Apenas professor ou admin podem cadastrar disciplinas.')
 
-  const baseSlug = slugify(title, 'disciplina')
+  const baseSlug = slugify(title, DEFAULT_DISCIPLINE_SLUG)
   const disciplineId = pickAvailableSlug(baseSlug, await repository.listDisciplineSlugs(baseSlug))
 
   if (!disciplineId) {
@@ -80,7 +80,7 @@ async function publishLesson({ disciplineId, filename, html, title, actor, origi
   }
 
   const slugSource = filename || title || 'aula'
-  const baseSlug = slugify(slugSource, 'aula')
+  const baseSlug = slugify(slugSource, DEFAULT_LESSON_SLUG)
   const lessonId = pickAvailableSlug(baseSlug, await repository.listLessonSlugs(baseSlug))
 
   if (!lessonId) {

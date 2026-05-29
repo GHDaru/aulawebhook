@@ -1,4 +1,6 @@
 const MAX_SLUG_ATTEMPTS = 100
+const DEFAULT_DISCIPLINE_SLUG = 'disciplina'
+const DEFAULT_LESSON_SLUG = 'aula'
 
 function normalizeBaseName(filename) {
   if (typeof filename !== 'string') {
@@ -28,8 +30,8 @@ function pickAvailableSlug(baseSlug, existingSlugs) {
   const taken = new Set(existingSlugs)
 
   for (let index = 0; index < MAX_SLUG_ATTEMPTS; index += 1) {
-    const suffix = index + 1
-    const candidate = index === 0 ? baseSlug : `${baseSlug}-${suffix}`
+    const iterationNumber = index + 1
+    const candidate = index === 0 ? baseSlug : `${baseSlug}-${iterationNumber}`
     if (!taken.has(candidate)) {
       return candidate
     }
@@ -38,4 +40,12 @@ function pickAvailableSlug(baseSlug, existingSlugs) {
   return null
 }
 
-export { MAX_SLUG_ATTEMPTS, normalizeBaseName, pickAvailableSlug, slugify, validateSlug }
+export {
+  DEFAULT_DISCIPLINE_SLUG,
+  DEFAULT_LESSON_SLUG,
+  MAX_SLUG_ATTEMPTS,
+  normalizeBaseName,
+  pickAvailableSlug,
+  slugify,
+  validateSlug,
+}

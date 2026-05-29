@@ -1,5 +1,7 @@
 import { initDb } from '../../../api/db.js'
 
+const MAX_LESSON_ORDER_RETRIES = 3
+
 async function createContentRepository() {
   const sql = await initDb()
 
@@ -115,7 +117,7 @@ async function createContentRepository() {
     async createLesson(lesson) {
       let lastError = null
 
-      for (let attempt = 1; attempt <= 3; attempt += 1) {
+      for (let attempt = 1; attempt <= MAX_LESSON_ORDER_RETRIES; attempt += 1) {
         try {
           const rows = await sql`
             INSERT INTO aulas (id, html, disciplina_id, lesson_order, title)
@@ -134,7 +136,7 @@ async function createContentRepository() {
           const message = String(error?.message || '')
           const isOrderCollision = message.includes('aulas_disciplina_lesson_order_unique_idx')
 
-          if (attempt < 3 && isOrderCollision) {
+          if (attempt < MAX_LESSON_ORDER_RETRIES && isOrderCollision) {
             continue
           }
 
