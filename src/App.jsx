@@ -363,11 +363,14 @@ function PortalView({ user, onLogout }) {
     return payload.items
   }, [])
 
-  const authHeaders = useMemo(() => ({
-    'Content-Type': 'application/json',
-    'x-user-id': user.id,
-    'x-user-role': user.role,
-  }), [user.id, user.role])
+  const authHeaders = useMemo(() => {
+    const userId = typeof user.id === 'string' ? user.id : ''
+    const userRole = typeof user.role === 'string' ? user.role : ''
+    const headers = { 'Content-Type': 'application/json' }
+    if (userId) headers['x-user-id'] = userId
+    if (userRole) headers['x-user-role'] = userRole
+    return headers
+  }, [user.id, user.role])
 
   const loadAll = useCallback(async () => {
     setLoading(true)

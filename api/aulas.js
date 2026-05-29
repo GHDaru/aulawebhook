@@ -1,8 +1,8 @@
 import { initDb } from './db.js'
+import { extractActor, validateManagerActor, validateProfessorActor } from './authz.js'
 
 const MAX_HTML_SIZE_BYTES = 1_500_000
 const MAX_SLUG_ATTEMPTS = 100
-const VALID_ROLES = new Set(['admin', 'professor', 'aluno'])
 
 function normalizeBaseName(filename) {
   if (typeof filename !== 'string') {
@@ -55,46 +55,6 @@ function parseJsonBody(body) {
   return body
 }
 
-function normalizeRole(role) {
-  if (VALID_ROLES.has(role)) return role
-  return ''
-}
-
-function firstValue(value) {
-  if (Array.isArray(value)) return value[0]
-  return value
-}
-
-function extractActor(req) {
-  const userId = String(
-    firstValue(req.headers['x-user-id']) || '',
-  ).trim()
-  const userRole = normalizeRole(
-    String(firstValue(req.headers['x-user-role']) || '').trim(),
-  )
-
-  return { userId, userRole }
-}
-
-function validateManagerActor(actor) {
-  if (!['admin', 'professor'].includes(actor.userRole)) {
-    return { status: 403, error: 'Apenas professor ou admin podem cadastrar disciplinas.' }
-  }
-
-  const professorError = validateProfessorActor(actor)
-  if (professorError) return professorError
-
-  return null
-}
-
-function validateProfessorActor(actor) {
-  if (actor.userRole === 'professor' && !actor.userId) {
-    return { status: 401, error: 'Professor não autenticado.' }
-  }
-
-  return null
-}
-
 function buildStudentUrl(origin, disciplineId, lessonId) {
   return `${origin}/student/${encodeURIComponent(disciplineId)}/${encodeURIComponent(lessonId)}`
 }
@@ -104,6 +64,10 @@ async function listDisciplines(req, res) {
     const sql = await initDb()
     const origin = resolveOrigin(req)
     const actor = extractActor(req)
+
+    if (actor.userRole === 'aluno') {
+      return res.status(403).json({ error: 'Alunos não podem visualizar a gestão de disciplinas.' })
+    }
 
     const professorError = validateProfessorActor(actor)
     if (professorError) return res.status(professorError.status).json({ error: professorError.error })
@@ -160,7 +124,7 @@ async function createDiscipline(req, res) {
     const body = parseJsonBody(req.body)
     const { title } = body
     const actor = extractActor(req)
-    const actorError = validateManagerActor(actor)
+    const actorError = validateManagerActor(actor, 'Apenas professor ou admin podem cadastrar disciplinas.')
     if (actorError) return res.status(actorError.status).json({ error: actorError.error })
 
     if (!title || typeof title !== 'string' || title.trim().length < 3) {
@@ -217,4 +181,4 @@ export default async function handler(req, res) {
   return res.status(405).json({ error: 'Método não permitido.' })
 }
 
-export { MAX_HTML_SIZE_BYTES, parseJsonBody, slugify, formatLessonTitle, buildStudentUrl, extractActor }
+export { MAX_HTML_SIZE_BYTES, parseJsonBody, slugify, formatLessonTitle, buildStudentUrl }

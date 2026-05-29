@@ -1,11 +1,11 @@
 import {
   MAX_HTML_SIZE_BYTES,
   buildStudentUrl,
-  extractActor,
   formatLessonTitle,
   parseJsonBody,
   slugify,
 } from '../aulas.js'
+import { extractActor, validateManagerActor } from '../authz.js'
 import { initDb } from '../db.js'
 
 const MAX_SLUG_ATTEMPTS = 100
@@ -26,18 +26,6 @@ function toSingleQueryValue(value) {
   return value
 }
 
-function validateManagerActor(actor) {
-  if (!['admin', 'professor'].includes(actor.userRole)) {
-    return { status: 403, error: 'Apenas professor ou admin podem administrar aulas.' }
-  }
-
-  if (actor.userRole === 'professor' && !actor.userId) {
-    return { status: 401, error: 'Professor não autenticado.' }
-  }
-
-  return null
-}
-
 function canManageDiscipline(actor, discipline) {
   if (actor.userRole === 'admin') return true
   return discipline.professor_id === actor.userId
@@ -48,7 +36,7 @@ async function addLesson(req, res, disciplineId) {
     const body = parseJsonBody(req.body)
     const { filename, html, title } = body
     const actor = extractActor(req)
-    const actorError = validateManagerActor(actor)
+    const actorError = validateManagerActor(actor, 'Apenas professor ou admin podem administrar aulas.')
     if (actorError) return res.status(actorError.status).json({ error: actorError.error })
 
     if (!validateSlug(disciplineId)) {
@@ -237,7 +225,7 @@ async function deleteDisciplineOrLegacy(req, res, lessonOrDisciplineId) {
 
     const discipline = await sql`SELECT id, professor_id FROM disciplinas WHERE id = ${lessonOrDisciplineId} LIMIT 1`
     if (discipline.length) {
-      const actorError = validateManagerActor(actor)
+      const actorError = validateManagerActor(actor, 'Apenas professor ou admin podem administrar aulas.')
       if (actorError) return res.status(actorError.status).json({ error: actorError.error })
       if (!canManageDiscipline(actor, discipline[0])) {
         return res.status(403).json({ error: 'Você só pode administrar aulas das suas disciplinas.' })
