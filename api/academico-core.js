@@ -52,7 +52,8 @@ async function ensureDefaultUsers(sql) {
       SET nome = EXCLUDED.nome,
         matricula = EXCLUDED.matricula,
         role = EXCLUDED.role,
-        senha_hash = CASE WHEN usuarios.first_access THEN EXCLUDED.senha_hash ELSE usuarios.senha_hash END
+        senha_hash = CASE WHEN usuarios.first_access THEN EXCLUDED.senha_hash ELSE usuarios.senha_hash END,
+        first_access = CASE WHEN usuarios.first_access THEN true ELSE usuarios.first_access END
     `
   }
 }
