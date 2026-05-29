@@ -34,6 +34,19 @@ function TeacherView() {
     [file, loading, selectedDiscipline],
   )
 
+  const applyDisciplines = useCallback((listed) => {
+    setDisciplines(listed)
+
+    if (!selectedDiscipline && listed[0]?.id) {
+      setSelectedDiscipline(listed[0].id)
+      return
+    }
+
+    if (selectedDiscipline && !listed.some((discipline) => discipline.id === selectedDiscipline)) {
+      setSelectedDiscipline(listed[0]?.id || '')
+    }
+  }, [selectedDiscipline])
+
   const loadDisciplines = useCallback(async () => {
     try {
       const response = await fetch('/api/aulas')
@@ -44,31 +57,46 @@ function TeacherView() {
       }
 
       const listed = payload.lessons || []
-      setDisciplines(listed)
-
-      if (!selectedDiscipline && listed[0]?.id) {
-        setSelectedDiscipline(listed[0].id)
-      }
-
-      if (selectedDiscipline && !listed.some((discipline) => discipline.id === selectedDiscipline)) {
-        setSelectedDiscipline(listed[0]?.id || '')
-      }
+      applyDisciplines(listed)
     } catch (loadError) {
       setPortalsError(loadError.message || 'Não foi possível carregar as disciplinas.')
     } finally {
       setPortalsLoading(false)
     }
-  }, [selectedDiscipline])
+  }, [applyDisciplines])
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      loadDisciplines()
-    }, 0)
+    let active = true
+
+    fetch('/api/aulas')
+      .then(async (response) => {
+        const payload = await response.json()
+        if (!response.ok) {
+          throw new Error(payload.error || 'Falha ao carregar as disciplinas.')
+        }
+        return payload
+      })
+      .then((payload) => {
+        if (!active) {
+          return
+        }
+        applyDisciplines(payload.lessons || [])
+      })
+      .catch((loadError) => {
+        if (active) {
+          setPortalsError(loadError.message || 'Não foi possível carregar as disciplinas.')
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setPortalsLoading(false)
+        }
+      })
 
     return () => {
-      window.clearTimeout(timeoutId)
+      active = false
     }
-  }, [loadDisciplines])
+  }, [applyDisciplines])
 
   const handleRefreshDisciplines = useCallback(() => {
     setPortalsLoading(true)

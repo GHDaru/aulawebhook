@@ -53,7 +53,6 @@ export async function initDb() {
     ON aulas (disciplina_id, lesson_order)
   `
 
-  await sql`DROP INDEX IF EXISTS aulas_disciplina_ordem_uq`
   await sql`
     CREATE UNIQUE INDEX IF NOT EXISTS aulas_disciplina_lesson_order_unique_idx
     ON aulas (disciplina_id, lesson_order)

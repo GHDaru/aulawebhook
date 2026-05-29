@@ -73,7 +73,7 @@ async function addLesson(req, res, disciplineId) {
       WHERE disciplina_id = ${disciplineId}
     `
 
-    const lessonOrder = Number(orderRows[0]?.max_order || 0) + 1
+    const lessonOrder = Number(orderRows[0]?.max_order ?? 0) + 1
     const lessonTitle = typeof title === 'string' && title.trim()
       ? title.trim()
       : formatLessonTitle(baseLessonId)
