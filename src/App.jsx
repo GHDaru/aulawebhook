@@ -764,7 +764,10 @@ function PortalView({ user, onLogout }) {
                         {discipline.lessons.length > 0 && (
                           <ul className="list-simple">
                             {discipline.lessons.map((lesson) => (
-                              <li key={lesson.id}>{lesson.order}. {lesson.title}</li>
+                              <li key={lesson.id}>
+                                {lesson.order}.{' '}
+                                <a href={lesson.studentUrl} target="_blank" rel="noreferrer">{lesson.title}</a>
+                              </li>
                             ))}
                           </ul>
                         )}
