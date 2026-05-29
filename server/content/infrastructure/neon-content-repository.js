@@ -50,6 +50,17 @@ async function createContentRepository() {
       return existing.length > 0
     },
 
+    async listDisciplineSlugs(baseSlug) {
+      const rows = await sql`
+        SELECT id
+        FROM disciplinas
+        WHERE id = ${baseSlug}
+          OR id LIKE ${`${baseSlug}-%`}
+      `
+
+      return rows.map((row) => row.id)
+    },
+
     async createDiscipline(discipline) {
       await sql`
         INSERT INTO disciplinas (id, title, professor_id)
@@ -80,6 +91,17 @@ async function createContentRepository() {
       return existing.length > 0
     },
 
+    async listLessonSlugs(baseSlug) {
+      const rows = await sql`
+        SELECT id
+        FROM aulas
+        WHERE id = ${baseSlug}
+          OR id LIKE ${`${baseSlug}-%`}
+      `
+
+      return rows.map((row) => row.id)
+    },
+
     async getNextLessonOrder(disciplineId) {
       const rows = await sql`
         SELECT COALESCE(MAX(lesson_order), 0) AS max_order
@@ -91,10 +113,33 @@ async function createContentRepository() {
     },
 
     async createLesson(lesson) {
-      await sql`
-        INSERT INTO aulas (id, html, disciplina_id, lesson_order, title)
-        VALUES (${lesson.id}, ${lesson.html}, ${lesson.disciplineId}, ${lesson.order}, ${lesson.title})
-      `
+      for (let attempt = 1; attempt <= 3; attempt += 1) {
+        try {
+          const rows = await sql`
+            INSERT INTO aulas (id, html, disciplina_id, lesson_order, title)
+            SELECT
+              ${lesson.id},
+              ${lesson.html},
+              ${lesson.disciplineId},
+              COALESCE((SELECT MAX(lesson_order) FROM aulas WHERE disciplina_id = ${lesson.disciplineId}), 0) + 1,
+              ${lesson.title}
+            RETURNING lesson_order
+          `
+
+          return Number(rows[0]?.lesson_order ?? 0)
+        } catch (error) {
+          const message = String(error?.message || '')
+          const isOrderCollision = message.includes('aulas_disciplina_lesson_order_unique_idx')
+
+          if (attempt < 3 && isOrderCollision) {
+            continue
+          }
+
+          throw error
+        }
+      }
+
+      return 0
     },
 
     async listLessonsByDiscipline(disciplineId) {
@@ -127,9 +172,9 @@ async function createContentRepository() {
     },
 
     async deleteDiscipline(id) {
-      await sql.transaction([
-        sql`DELETE FROM aulas WHERE disciplina_id = ${id}`,
-        sql`DELETE FROM disciplinas WHERE id = ${id}`,
+      await sql.transaction((tx) => [
+        tx`DELETE FROM aulas WHERE disciplina_id = ${id}`,
+        tx`DELETE FROM disciplinas WHERE id = ${id}`,
       ])
     },
 

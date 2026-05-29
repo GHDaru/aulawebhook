@@ -2,7 +2,7 @@ import { createDiscipline } from '../domain/discipline.js'
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../domain/errors.js'
 import { createLesson, formatLessonTitle, validateHtmlContent, validateLessonFilename } from '../domain/lesson.js'
 import { canManageDiscipline, ensureManagerActor, ensureViewerActor } from '../domain/permissions.js'
-import { generateUniqueSlug, validateSlug } from '../domain/slug.js'
+import { pickAvailableSlug, slugify, validateSlug } from '../domain/slug.js'
 import { buildStudentUrl } from '../infrastructure/http.js'
 
 async function listDisciplines({ actor, origin, repository }) {
@@ -43,18 +43,15 @@ async function listDisciplines({ actor, origin, repository }) {
 async function registerDiscipline({ title, actor, repository }) {
   ensureManagerActor(actor, 'Apenas professor ou admin podem cadastrar disciplinas.')
 
-  const slugData = await generateUniqueSlug({
-    value: title,
-    fallback: 'disciplina',
-    exists: (slug) => repository.hasDisciplineWithId(slug),
-  })
+  const baseSlug = slugify(title, 'disciplina')
+  const disciplineId = pickAvailableSlug(baseSlug, await repository.listDisciplineSlugs(baseSlug))
 
-  if (!slugData) {
+  if (!disciplineId) {
     throw new ConflictError('Não foi possível gerar um identificador único para a disciplina.')
   }
 
   const discipline = createDiscipline({
-    id: slugData.slug,
+    id: disciplineId,
     title,
     professorId: actor.userRole === 'professor' ? actor.userId : null,
   })
@@ -83,28 +80,24 @@ async function publishLesson({ disciplineId, filename, html, title, actor, origi
   }
 
   const slugSource = filename || title || 'aula'
-  const slugData = await generateUniqueSlug({
-    value: slugSource,
-    fallback: 'aula',
-    exists: (slug) => repository.hasLessonWithId(slug),
-  })
+  const baseSlug = slugify(slugSource, 'aula')
+  const lessonId = pickAvailableSlug(baseSlug, await repository.listLessonSlugs(baseSlug))
 
-  if (!slugData) {
+  if (!lessonId) {
     throw new ConflictError('Não foi possível gerar um identificador único para a aula.')
   }
 
-  const order = await repository.getNextLessonOrder(disciplineId)
   const trimmedTitle = typeof title === 'string' ? title.trim() : ''
   const lesson = createLesson({
-    id: slugData.slug,
+    id: lessonId,
     disciplineId,
     disciplineTitle: discipline.title,
     html,
-    order,
-    title: trimmedTitle || formatLessonTitle(slugData.baseSlug),
+    order: 0,
+    title: trimmedTitle || formatLessonTitle(baseSlug),
   })
 
-  await repository.createLesson(lesson)
+  lesson.order = await repository.createLesson(lesson)
 
   return {
     id: lesson.id,

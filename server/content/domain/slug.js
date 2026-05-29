@@ -24,18 +24,17 @@ function validateSlug(value) {
   return typeof value === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(value)
 }
 
-async function generateUniqueSlug({ value, fallback, exists }) {
-  const baseSlug = slugify(value, fallback)
-  
+function pickAvailableSlug(baseSlug, existingSlugs) {
+  const taken = new Set(existingSlugs)
+
   for (let attempt = 1; attempt <= MAX_SLUG_ATTEMPTS; attempt += 1) {
     const candidate = attempt === 1 ? baseSlug : `${baseSlug}-${attempt}`
-    const alreadyExists = await exists(candidate)
-    if (!alreadyExists) {
-      return { baseSlug, slug: candidate }
+    if (!taken.has(candidate)) {
+      return candidate
     }
   }
 
   return null
 }
 
-export { MAX_SLUG_ATTEMPTS, generateUniqueSlug, normalizeBaseName, slugify, validateSlug }
+export { MAX_SLUG_ATTEMPTS, normalizeBaseName, pickAvailableSlug, slugify, validateSlug }
