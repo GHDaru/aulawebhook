@@ -1,426 +1,153 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import './App.css'
 
-const PORTAL_DATE_FORMATTER = new Intl.DateTimeFormat('pt-BR', {
-  dateStyle: 'medium',
+const DATE_FORMATTER = new Intl.DateTimeFormat('pt-BR', {
+  dateStyle: 'short',
   timeStyle: 'short',
 })
 
-function formatPortalDate(value) {
+const MENU_ITEMS = [
+  { key: 'dashboard', label: 'Dashboard' },
+  { key: 'disciplinas', label: 'Disciplinas' },
+  { key: 'aulas', label: 'Aulas' },
+  { key: 'alunos', label: 'Alunos' },
+  { key: 'matriculas', label: 'Matrículas' },
+  { key: 'notas', label: 'Notas' },
+  { key: 'progresso', label: 'Progresso' },
+  { key: 'certidoes', label: 'Certidões' },
+  { key: 'integracoes', label: 'Integrações' },
+]
+
+function formatDate(value) {
   try {
-    return PORTAL_DATE_FORMATTER.format(new Date(value))
+    return DATE_FORMATTER.format(new Date(value))
   } catch {
     return 'Data indisponível'
   }
 }
 
-function TeacherView() {
-  const [file, setFile] = useState(null)
-  const [disciplineTitle, setDisciplineTitle] = useState('')
-  const [lessonTitle, setLessonTitle] = useState('')
-  const [selectedDiscipline, setSelectedDiscipline] = useState('')
-  const [activeTab, setActiveTab] = useState('publish')
+async function parseResponse(response) {
+  const payload = await response.json()
+  if (!response.ok) {
+    throw new Error(payload.error || 'Falha na operação.')
+  }
+  return payload
+}
+
+function LoginView({ onLogin }) {
+  const [identifier, setIdentifier] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [disciplineLoading, setDisciplineLoading] = useState(false)
-  const [portalsLoading, setPortalsLoading] = useState(true)
-  const [portalsError, setPortalsError] = useState('')
-  const [disciplines, setDisciplines] = useState([])
-  const [copiedUrl, setCopiedUrl] = useState('')
   const [error, setError] = useState('')
-  const [result, setResult] = useState(null)
 
-  const canSubmitLesson = useMemo(
-    () => Boolean(file) && Boolean(selectedDiscipline) && !loading,
-    [file, loading, selectedDiscipline],
-  )
-
-  const applyDisciplines = useCallback((listed) => {
-    setDisciplines(listed)
-
-    if (!selectedDiscipline && listed[0]?.id) {
-      setSelectedDiscipline(listed[0].id)
-      return
-    }
-
-    if (selectedDiscipline && !listed.some((discipline) => discipline.id === selectedDiscipline)) {
-      setSelectedDiscipline(listed[0]?.id || '')
-    }
-  }, [selectedDiscipline])
-
-  const loadDisciplines = useCallback(async () => {
-    try {
-      const response = await fetch('/api/aulas')
-      const payload = await response.json()
-
-      if (!response.ok) {
-        throw new Error(payload.error || 'Falha ao carregar as disciplinas.')
-      }
-
-      const listed = payload.lessons || []
-      applyDisciplines(listed)
-    } catch (loadError) {
-      setPortalsError(loadError.message || 'Não foi possível carregar as disciplinas.')
-    } finally {
-      setPortalsLoading(false)
-    }
-  }, [applyDisciplines])
-
-  useEffect(() => {
-    let active = true
-
-    fetch('/api/aulas')
-      .then(async (response) => {
-        const payload = await response.json()
-        if (!response.ok) {
-          throw new Error(payload.error || 'Falha ao carregar as disciplinas.')
-        }
-        return payload
-      })
-      .then((payload) => {
-        if (!active) {
-          return
-        }
-        applyDisciplines(payload.lessons || [])
-      })
-      .catch((loadError) => {
-        if (active) {
-          setPortalsError(loadError.message || 'Não foi possível carregar as disciplinas.')
-        }
-      })
-      .finally(() => {
-        if (active) {
-          setPortalsLoading(false)
-        }
-      })
-
-    return () => {
-      active = false
-    }
-  }, [applyDisciplines])
-
-  const handleRefreshDisciplines = useCallback(() => {
-    setPortalsLoading(true)
-    setPortalsError('')
-    loadDisciplines()
-  }, [loadDisciplines])
-
-  const handleCopy = useCallback(async (url) => {
-    await navigator.clipboard.writeText(url)
-    setCopiedUrl(url)
-  }, [])
-
-  const handleDeleteDiscipline = useCallback(async (disciplineId) => {
-    setPortalsError('')
-
-    try {
-      const response = await fetch(`/api/aulas/${disciplineId}`, {
-        method: 'DELETE',
-      })
-      const payload = await response.json()
-
-      if (!response.ok) {
-        throw new Error(payload.error || 'Não foi possível apagar a disciplina.')
-      }
-
-      setDisciplines((current) => current.filter((discipline) => discipline.id !== disciplineId))
-      if (selectedDiscipline === disciplineId) {
-        setSelectedDiscipline('')
-      }
-      if (result?.disciplineId === disciplineId) {
-        setResult(null)
-      }
-    } catch (deleteError) {
-      setPortalsError(deleteError.message || 'Não foi possível apagar a disciplina.')
-    }
-  }, [result, selectedDiscipline])
-
-  const handleCreateDiscipline = useCallback(async (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
     setError('')
-
-    const trimmedTitle = disciplineTitle.trim()
-    if (trimmedTitle.length < 3) {
-      setError('Informe o nome da disciplina com pelo menos 3 caracteres.')
-      return
-    }
-
-    setDisciplineLoading(true)
-
-    try {
-      const response = await fetch('/api/aulas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: trimmedTitle }),
-      })
-
-      const payload = await response.json()
-      if (!response.ok) {
-        throw new Error(payload.error || 'Falha ao criar disciplina.')
-      }
-
-      setDisciplineTitle('')
-      setSelectedDiscipline(payload.id)
-      setPortalsLoading(true)
-      await loadDisciplines()
-    } catch (createError) {
-      setError(createError.message || 'Não foi possível criar a disciplina.')
-    } finally {
-      setDisciplineLoading(false)
-    }
-  }, [disciplineTitle, loadDisciplines])
-
-  const handleSubmitLesson = async (event) => {
-    event.preventDefault()
-    setError('')
-    setResult(null)
-
-    if (!file || !selectedDiscipline) {
-      setError('Selecione uma disciplina e um arquivo HTML para incluir a aula.')
-      return
-    }
-
     setLoading(true)
-    try {
-      const html = await file.text()
 
-      const response = await fetch(`/api/aulas/${selectedDiscipline}`, {
+    try {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filename: file.name,
-          html,
-          title: lessonTitle.trim() || undefined,
-        }),
+        body: JSON.stringify({ identifier, password }),
       })
 
-      const payload = await response.json()
-      if (!response.ok) {
-        throw new Error(payload.error || 'Falha ao incluir aula.')
-      }
-
-      setResult(payload)
-      setLessonTitle('')
-      setFile(null)
-      setActiveTab('portals')
-      setPortalsLoading(true)
-      await loadDisciplines()
-    } catch (uploadError) {
-      setError(uploadError.message || 'Não foi possível incluir a aula.')
+      const payload = await parseResponse(response)
+      onLogin(payload.user)
+    } catch (loginError) {
+      setError(loginError.message || 'Não foi possível entrar.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <main className="container">
-      <section className="hero card hero-card">
-        <div>
-          <span className="eyebrow">Tema Esmeralda Acadêmico</span>
-          <h1>Painel de Disciplinas e Aulas</h1>
-          <p className="subtitle">
-            Cadastre disciplinas, inclua aulas em sequência e compartilhe links públicos com navegação
-            entre o conteúdo.
-          </p>
-        </div>
+    <main className="auth-shell">
+      <form className="card auth-card" onSubmit={handleSubmit}>
+        <span className="eyebrow">Portal Acadêmico</span>
+        <h1>Entrar</h1>
+        <p className="subtitle">Acesse com usuário ou matrícula e senha.</p>
+        <label htmlFor="identifier">Usuário ou matrícula</label>
+        <input
+          id="identifier"
+          value={identifier}
+          onChange={(event) => setIdentifier(event.target.value)}
+          placeholder="admin ou 20260001"
+          required
+        />
 
-        <div className="hero-stats">
-          <div className="stat-card">
-            <span className="stat-label">Disciplinas ativas</span>
-            <strong>{disciplines.length}</strong>
-          </div>
-          <div className="stat-card">
-            <span className="stat-label">Rota pública</span>
-            <strong>/student/.../...</strong>
-          </div>
-        </div>
-      </section>
+        <label htmlFor="password">Senha</label>
+        <input
+          id="password"
+          type="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          placeholder="••••••"
+          required
+        />
 
-      <div className="tabs" role="tablist" aria-label="Gerenciamento acadêmico">
-        <button
-          className={`tab ${activeTab === 'publish' ? 'tab-active' : ''}`}
-          type="button"
-          onClick={() => setActiveTab('publish')}
-        >
-          Cadastrar conteúdo
+        {error && <p className="error">{error}</p>}
+
+        <button className="btn" type="submit" disabled={loading}>
+          {loading ? 'Entrando...' : 'Entrar'}
         </button>
-        <button
-          className={`tab ${activeTab === 'portals' ? 'tab-active' : ''}`}
-          type="button"
-          onClick={() => setActiveTab('portals')}
-        >
-          Disciplinas Ativas
+
+        <p className="helper-text">
+          Primeiro acesso padrão: admin/0001, professor/0002, aluno demo/20260001 com senha <strong>123456</strong>.
+        </p>
+      </form>
+    </main>
+  )
+}
+
+function ChangePasswordView({ user, onChanged }) {
+  const [newPassword, setNewPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    setError('')
+    setLoading(true)
+
+    try {
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, newPassword }),
+      })
+      await parseResponse(response)
+      onChanged()
+    } catch (changeError) {
+      setError(changeError.message || 'Não foi possível trocar a senha.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <main className="auth-shell">
+      <form className="card auth-card" onSubmit={handleSubmit}>
+        <span className="eyebrow">Primeiro acesso</span>
+        <h1>Trocar senha</h1>
+        <p className="subtitle">Olá, {user.nome}. Defina uma nova senha para continuar.</p>
+
+        <label htmlFor="new-password">Nova senha</label>
+        <input
+          id="new-password"
+          type="password"
+          value={newPassword}
+          onChange={(event) => setNewPassword(event.target.value)}
+          minLength={6}
+          required
+        />
+
+        {error && <p className="error">{error}</p>}
+
+        <button className="btn" type="submit" disabled={loading}>
+          {loading ? 'Atualizando...' : 'Salvar nova senha'}
         </button>
-      </div>
-
-      {activeTab === 'publish' && (
-        <>
-          <form className="card" onSubmit={handleCreateDiscipline}>
-            <h2>Criar disciplina</h2>
-            <label htmlFor="discipline-title">Nome da disciplina</label>
-            <input
-              id="discipline-title"
-              type="text"
-              value={disciplineTitle}
-              placeholder="Ex.: Banco de Dados I"
-              onChange={(event) => setDisciplineTitle(event.target.value)}
-            />
-
-            <button className="btn" type="submit" disabled={disciplineLoading}>
-              {disciplineLoading ? 'Cadastrando...' : 'Cadastrar disciplina'}
-            </button>
-          </form>
-
-          <form className="card" onSubmit={handleSubmitLesson}>
-            <h2>Incluir aula na disciplina</h2>
-            <label htmlFor="discipline-select">Disciplina</label>
-            <select
-              id="discipline-select"
-              value={selectedDiscipline}
-              onChange={(event) => setSelectedDiscipline(event.target.value)}
-            >
-              <option value="">Selecione uma disciplina</option>
-              {disciplines.map((discipline) => (
-                <option key={discipline.id} value={discipline.id}>
-                  {discipline.title}
-                </option>
-              ))}
-            </select>
-
-            <label htmlFor="lesson-title">Título da aula (opcional)</label>
-            <input
-              id="lesson-title"
-              type="text"
-              value={lessonTitle}
-              placeholder="Ex.: Aula 1 - Introdução"
-              onChange={(event) => setLessonTitle(event.target.value)}
-            />
-
-            <label htmlFor="html-file">Arquivo HTML da aula</label>
-            <input
-              id="html-file"
-              type="file"
-              accept=".html,text/html"
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-            />
-
-            <p className="helper-text">
-              Cada nova aula é adicionada no fim da disciplina para permitir navegação anterior/próxima.
-            </p>
-
-            <button className="btn" type="submit" disabled={!canSubmitLesson}>
-              {loading ? 'Incluindo...' : 'Incluir aula'}
-            </button>
-          </form>
-
-          {error && <p className="error">{error}</p>}
-
-          {result && (
-            <section className="card success">
-              <h2>Aula incluída com sucesso</h2>
-              <p className="success-text">
-                {result.title} foi adicionada em <strong>{result.disciplineTitle}</strong> na posição{' '}
-                {result.order}.
-              </p>
-              <a className="portal-link" href={result.studentUrl} target="_blank" rel="noreferrer">
-                {result.studentUrl}
-              </a>
-              <div className="actions">
-                <button
-                  className="btn btn-secondary"
-                  type="button"
-                  onClick={() => handleCopy(result.studentUrl)}
-                >
-                  Copiar link público
-                </button>
-                <a className="btn btn-secondary" href={result.studentUrl} target="_blank" rel="noreferrer">
-                  Abrir aula
-                </a>
-              </div>
-            </section>
-          )}
-        </>
-      )}
-
-      {activeTab === 'portals' && (
-        <section className="card portals-card">
-          <div className="section-heading">
-            <div>
-              <h2>Disciplinas Ativas</h2>
-              <p className="subtitle section-subtitle">
-                Veja as disciplinas cadastradas e as aulas ordenadas de cada uma.
-              </p>
-            </div>
-            <button className="btn btn-secondary" type="button" onClick={handleRefreshDisciplines}>
-              Atualizar lista
-            </button>
-          </div>
-
-          {portalsError && <p className="error">{portalsError}</p>}
-          {copiedUrl && <p className="helper-text">Link copiado: {copiedUrl}</p>}
-
-          {portalsLoading ? (
-            <p className="empty-state">Carregando disciplinas...</p>
-          ) : disciplines.length === 0 ? (
-            <div className="empty-state">
-              <strong>Nenhuma disciplina ativa no momento.</strong>
-              <span>Cadastre uma disciplina e inclua a primeira aula.</span>
-            </div>
-          ) : (
-            <div className="portal-list">
-              {disciplines.map((discipline) => (
-                <article className="portal-item" key={discipline.id}>
-                  <div className="portal-copy">
-                    <span className="portal-badge">Disciplina cadastrada</span>
-                    <h3>{discipline.title}</h3>
-                    <p className="portal-meta">Criada em {formatPortalDate(discipline.createdAt)}</p>
-
-                    {discipline.lessons.length === 0 ? (
-                      <p className="helper-text">Sem aulas cadastradas ainda.</p>
-                    ) : (
-                      <ol className="lesson-list">
-                        {discipline.lessons.map((lesson) => (
-                          <li key={lesson.id}>
-                            <span>
-                              Aula {lesson.order}: {lesson.title}
-                            </span>
-                            <div className="actions lesson-actions">
-                              <a
-                                className="btn btn-secondary"
-                                href={lesson.studentUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                              >
-                                Abrir
-                              </a>
-                              <button
-                                className="btn btn-secondary"
-                                type="button"
-                                onClick={() => handleCopy(lesson.studentUrl)}
-                              >
-                                Copiar link
-                              </button>
-                            </div>
-                          </li>
-                        ))}
-                      </ol>
-                    )}
-                  </div>
-
-                  <div className="actions portal-actions">
-                    <button
-                      className="btn btn-danger"
-                      type="button"
-                      onClick={() => handleDeleteDiscipline(discipline.id)}
-                    >
-                      Apagar disciplina
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
+      </form>
     </main>
   )
 }
@@ -445,11 +172,7 @@ function StudentView({ disciplineId, lessonId }) {
           : `/api/aulas/${encodeURIComponent(lessonId)}`
 
         const response = await fetch(endpoint)
-        const payload = await response.json()
-
-        if (!response.ok) {
-          throw new Error(payload.error || 'Aula não encontrada.')
-        }
+        const payload = await parseResponse(response)
 
         if (active) {
           setHtml(payload.html)
@@ -535,7 +258,672 @@ function StudentView({ disciplineId, lessonId }) {
   )
 }
 
+function PortalView({ user, onLogout }) {
+  const [activeModule, setActiveModule] = useState('dashboard')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const [dashboard, setDashboard] = useState({})
+  const [disciplines, setDisciplines] = useState([])
+  const [alunos, setAlunos] = useState([])
+  const [matriculas, setMatriculas] = useState([])
+  const [notas, setNotas] = useState([])
+  const [progresso, setProgresso] = useState([])
+  const [certidoes, setCertidoes] = useState([])
+  const [integracoes, setIntegracoes] = useState([])
+
+  const [quickStudentSearch, setQuickStudentSearch] = useState('')
+
+  const [disciplineTitle, setDisciplineTitle] = useState('')
+  const [selectedDiscipline, setSelectedDiscipline] = useState('')
+  const [lessonTitle, setLessonTitle] = useState('')
+  const [lessonFile, setLessonFile] = useState(null)
+
+  const [alunoNome, setAlunoNome] = useState('')
+  const [alunoMatricula, setAlunoMatricula] = useState('')
+  const [alunoEmail, setAlunoEmail] = useState('')
+  const [alunoSenhaPadrao, setAlunoSenhaPadrao] = useState('123456')
+  const [bulkCsv, setBulkCsv] = useState('')
+
+  const [matriculaAlunoId, setMatriculaAlunoId] = useState('')
+  const [matriculaDisciplinaId, setMatriculaDisciplinaId] = useState('')
+
+  const [notaAlunoId, setNotaAlunoId] = useState('')
+  const [notaDisciplinaId, setNotaDisciplinaId] = useState('')
+  const [avaliacao, setAvaliacao] = useState('')
+  const [notaValor, setNotaValor] = useState('')
+
+  const [progAlunoId, setProgAlunoId] = useState('')
+  const [progDisciplinaId, setProgDisciplinaId] = useState('')
+  const [progConcluido, setProgConcluido] = useState('')
+  const [progTotal, setProgTotal] = useState('')
+
+  const [certAlunoId, setCertAlunoId] = useState('')
+  const [certDisciplinaId, setCertDisciplinaId] = useState('')
+  const [notaMinima, setNotaMinima] = useState('6')
+  const [progressoMinimo, setProgressoMinimo] = useState('75')
+
+  const visibleMenu = useMemo(() => {
+    if (user.role === 'aluno') {
+      return MENU_ITEMS.filter((item) => ['dashboard', 'progresso', 'certidoes'].includes(item.key))
+    }
+
+    if (user.role === 'professor') {
+      return MENU_ITEMS.filter((item) => item.key !== 'integracoes')
+    }
+
+    return MENU_ITEMS
+  }, [user.role])
+
+  const consolidatedByDiscipline = useMemo(() => {
+    const map = new Map()
+
+    notas.forEach((item) => {
+      const key = item.disciplina_title
+      const current = map.get(key) || { disciplina: key, notas: [], progressos: [] }
+      current.notas.push(Number(item.nota))
+      map.set(key, current)
+    })
+
+    progresso.forEach((item) => {
+      const key = item.disciplina_title
+      const current = map.get(key) || { disciplina: key, notas: [], progressos: [] }
+      current.progressos.push(Number(item.percentual))
+      map.set(key, current)
+    })
+
+    return Array.from(map.values()).map((item) => ({
+      disciplina: item.disciplina,
+      mediaNotas: item.notas.length ? (item.notas.reduce((acc, n) => acc + n, 0) / item.notas.length).toFixed(2) : '0.00',
+      mediaProgresso: item.progressos.length
+        ? (item.progressos.reduce((acc, n) => acc + n, 0) / item.progressos.length).toFixed(2)
+        : '0.00',
+    }))
+  }, [notas, progresso])
+
+  const filteredStudents = useMemo(() => {
+    const query = quickStudentSearch.trim().toLowerCase()
+    if (!query) return alunos
+    return alunos.filter(
+      (aluno) =>
+        String(aluno.nome || '').toLowerCase().includes(query) ||
+        String(aluno.matricula || '').toLowerCase().includes(query),
+    )
+  }, [alunos, quickStudentSearch])
+
+  const loadResource = useCallback(async (resource) => {
+    const response = await fetch(`/api/academico?resource=${encodeURIComponent(resource)}`)
+    const payload = await parseResponse(response)
+    return payload.items
+  }, [])
+
+  const loadAll = useCallback(async () => {
+    setLoading(true)
+    setError('')
+
+    try {
+      const [dashboardItems, disciplinasPayload, alunosItems, matriculasItems, notasItems, progressoItems, certidoesItems, integracoesItems] = await Promise.all([
+        loadResource('dashboard'),
+        fetch('/api/aulas').then(parseResponse),
+        loadResource('alunos'),
+        loadResource('matriculas'),
+        loadResource('notas'),
+        loadResource('progresso'),
+        loadResource('certidoes'),
+        loadResource('integracoes'),
+      ])
+
+      setDashboard(dashboardItems)
+      setDisciplines(disciplinasPayload.lessons || [])
+      setAlunos(alunosItems || [])
+      setMatriculas(matriculasItems || [])
+      setNotas(notasItems || [])
+      setProgresso(progressoItems || [])
+      setCertidoes(certidoesItems || [])
+      setIntegracoes(integracoesItems || [])
+    } catch (loadError) {
+      setError(loadError.message || 'Falha ao carregar dados do portal.')
+    } finally {
+      setLoading(false)
+    }
+  }, [loadResource])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadAll()
+    }, 0)
+
+    return () => clearTimeout(timer)
+  }, [loadAll])
+
+  const runAction = useCallback(async (request, successModule) => {
+    setError('')
+    try {
+      await request()
+      await loadAll()
+      if (successModule) {
+        setActiveModule(successModule)
+      }
+    } catch (actionError) {
+      setError(actionError.message || 'Falha ao executar ação.')
+    }
+  }, [loadAll])
+
+  const handleCreateDiscipline = (event) => {
+    event.preventDefault()
+    runAction(async () => {
+      const response = await fetch('/api/aulas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: disciplineTitle }),
+      })
+      await parseResponse(response)
+      setDisciplineTitle('')
+    }, 'disciplinas')
+  }
+
+  const handleUploadLesson = (event) => {
+    event.preventDefault()
+
+    runAction(async () => {
+      if (!lessonFile || !selectedDiscipline) {
+        throw new Error('Selecione disciplina e arquivo HTML.')
+      }
+      const html = await lessonFile.text()
+      const response = await fetch(`/api/aulas/${selectedDiscipline}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: lessonFile.name, html, title: lessonTitle || undefined }),
+      })
+      await parseResponse(response)
+      setLessonTitle('')
+      setLessonFile(null)
+    }, 'aulas')
+  }
+
+  const handleCreateAluno = (event) => {
+    event.preventDefault()
+    runAction(async () => {
+      const response = await fetch('/api/academico', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resource: 'alunos',
+          nome: alunoNome,
+          matricula: alunoMatricula,
+          email: alunoEmail || null,
+          defaultPassword: alunoSenhaPadrao,
+        }),
+      })
+      await parseResponse(response)
+      setAlunoNome('')
+      setAlunoMatricula('')
+      setAlunoEmail('')
+    }, 'alunos')
+  }
+
+  const handleBulkCadastro = (event) => {
+    event.preventDefault()
+    runAction(async () => {
+      const response = await fetch('/api/academico', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resource: 'alunos',
+          mode: 'bulk',
+          csvText: bulkCsv,
+          defaultPassword: alunoSenhaPadrao,
+        }),
+      })
+      await parseResponse(response)
+      setBulkCsv('')
+    }, 'alunos')
+  }
+
+  const handleCreateMatricula = (event) => {
+    event.preventDefault()
+    runAction(async () => {
+      const response = await fetch('/api/academico', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resource: 'matriculas',
+          alunoId: matriculaAlunoId,
+          disciplinaId: matriculaDisciplinaId,
+        }),
+      })
+      await parseResponse(response)
+    }, 'matriculas')
+  }
+
+  const handleLaunchGrade = (event) => {
+    event.preventDefault()
+    runAction(async () => {
+      const response = await fetch('/api/academico', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resource: 'notas',
+          alunoId: notaAlunoId,
+          disciplinaId: notaDisciplinaId,
+          avaliacao,
+          nota: Number(notaValor),
+        }),
+      })
+      await parseResponse(response)
+      setAvaliacao('')
+      setNotaValor('')
+    }, 'notas')
+  }
+
+  const handleUpdateProgress = (event) => {
+    event.preventDefault()
+    runAction(async () => {
+      const response = await fetch('/api/academico', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resource: 'progresso',
+          alunoId: progAlunoId,
+          disciplinaId: progDisciplinaId,
+          concluido: Number(progConcluido),
+          total: Number(progTotal),
+        }),
+      })
+      await parseResponse(response)
+    }, 'progresso')
+  }
+
+  const handleEmitCertificate = (event) => {
+    event.preventDefault()
+    runAction(async () => {
+      const response = await fetch('/api/academico', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resource: 'certidoes',
+          alunoId: certAlunoId,
+          disciplinaId: certDisciplinaId,
+          notaMinima: Number(notaMinima),
+          progressoMinimo: Number(progressoMinimo),
+        }),
+      })
+      await parseResponse(response)
+    }, 'certidoes')
+  }
+
+  const handleSimulateWebhook = () => {
+    runAction(async () => {
+      const response = await fetch('/api/webhook/simulate', { method: 'POST' })
+      await parseResponse(response)
+    }, 'integracoes')
+  }
+
+  const handleDownloadCert = (item) => {
+    const content = [
+      'CERTIDÃO DE CONCLUSÃO',
+      `Aluno: ${item.aluno_nome}`,
+      `Matrícula: ${item.aluno_matricula}`,
+      `Disciplina: ${item.disciplina_title}`,
+      `Média: ${item.media}`,
+      `Progresso: ${item.progresso}%`,
+      `Status: ${item.status}`,
+      `Emitida em: ${formatDate(item.issued_at)}`,
+    ].join('\n')
+
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `certidao-${item.id}.txt`
+    anchor.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const sectionTitle = visibleMenu.find((item) => item.key === activeModule)?.label || 'Dashboard'
+
+  return (
+    <div className="portal-layout">
+      <aside className="sidebar">
+        <div>
+          <p className="sidebar-brand">Aula Webhook</p>
+          <p className="helper-text">{user.nome} · {user.role}</p>
+        </div>
+
+        <nav className="sidebar-nav" aria-label="Menu principal">
+          {visibleMenu.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className={`sidebar-item ${activeModule === item.key ? 'sidebar-item-active' : ''}`}
+              onClick={() => setActiveModule(item.key)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
+        <button className="btn btn-secondary" type="button" onClick={onLogout}>
+          Sair
+        </button>
+      </aside>
+
+      <main className="portal-main">
+        <header className="topbar card">
+          <div>
+            <h1>{sectionTitle}</h1>
+            <p className="subtitle">Gestão acadêmica com fluxo consolidado por disciplina.</p>
+          </div>
+
+          <div className="quick-actions">
+            <input
+              type="text"
+              placeholder="Buscar aluno por nome/matrícula"
+              value={quickStudentSearch}
+              onChange={(event) => setQuickStudentSearch(event.target.value)}
+            />
+            <button className="btn btn-secondary" type="button" onClick={() => setActiveModule('disciplinas')}>
+              Criar disciplina
+            </button>
+            <button className="btn btn-secondary" type="button" onClick={() => setActiveModule('notas')}>
+              Lançar nota
+            </button>
+          </div>
+        </header>
+
+        {error && <p className="error">{error}</p>}
+
+        {loading ? (
+          <p>Carregando dados do portal...</p>
+        ) : (
+          <>
+            {activeModule === 'dashboard' && (
+              <section className="card">
+                <div className="kpi-grid">
+                  <article className="kpi-card"><span>Disciplinas</span><strong>{dashboard.disciplinas || 0}</strong></article>
+                  <article className="kpi-card"><span>Aulas</span><strong>{dashboard.aulas || 0}</strong></article>
+                  <article className="kpi-card"><span>Alunos</span><strong>{dashboard.alunos || 0}</strong></article>
+                  <article className="kpi-card"><span>Matrículas</span><strong>{dashboard.matriculas || 0}</strong></article>
+                  <article className="kpi-card"><span>Notas</span><strong>{dashboard.notas || 0}</strong></article>
+                  <article className="kpi-card"><span>Certidões</span><strong>{dashboard.certidoes || 0}</strong></article>
+                </div>
+
+                <h2>Visão consolidada da disciplina</h2>
+                {consolidatedByDiscipline.length === 0 ? (
+                  <p className="helper-text">Sem dados consolidados no momento.</p>
+                ) : (
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Disciplina</th>
+                        <th>Média de notas</th>
+                        <th>Média de progresso</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {consolidatedByDiscipline.map((item) => (
+                        <tr key={item.disciplina}>
+                          <td>{item.disciplina}</td>
+                          <td>{item.mediaNotas}</td>
+                          <td>{item.mediaProgresso}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+                <h2>Busca rápida de aluno</h2>
+                <ul className="list-simple">
+                  {filteredStudents.slice(0, 10).map((aluno) => (
+                    <li key={aluno.id}>{aluno.nome} · {aluno.matricula}</li>
+                  ))}
+                  {filteredStudents.length === 0 && <li>Nenhum aluno encontrado.</li>}
+                </ul>
+              </section>
+            )}
+
+            {activeModule === 'disciplinas' && (
+              <section className="card">
+                <h2>Cadastrar disciplina</h2>
+                <form className="form-grid" onSubmit={handleCreateDiscipline}>
+                  <input
+                    type="text"
+                    placeholder="Nome da disciplina"
+                    value={disciplineTitle}
+                    onChange={(event) => setDisciplineTitle(event.target.value)}
+                    required
+                  />
+                  <button className="btn" type="submit">Cadastrar</button>
+                </form>
+
+                <h2>Disciplinas ativas</h2>
+                <ul className="list-simple">
+                  {disciplines.map((discipline) => (
+                    <li key={discipline.id}>{discipline.title} ({discipline.lessons.length} aulas)</li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {activeModule === 'aulas' && (
+              <section className="card">
+                <h2>Incluir aula em disciplina</h2>
+                <form className="form-grid" onSubmit={handleUploadLesson}>
+                  <select
+                    value={selectedDiscipline}
+                    onChange={(event) => setSelectedDiscipline(event.target.value)}
+                    required
+                  >
+                    <option value="">Selecione disciplina</option>
+                    {disciplines.map((discipline) => (
+                      <option key={discipline.id} value={discipline.id}>{discipline.title}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="Título da aula"
+                    value={lessonTitle}
+                    onChange={(event) => setLessonTitle(event.target.value)}
+                  />
+                  <input
+                    type="file"
+                    accept=".html,text/html"
+                    onChange={(event) => setLessonFile(event.target.files?.[0] ?? null)}
+                    required
+                  />
+                  <button className="btn" type="submit">Publicar aula</button>
+                </form>
+              </section>
+            )}
+
+            {activeModule === 'alunos' && (
+              <section className="card">
+                <h2>Cadastro individual</h2>
+                <form className="form-grid" onSubmit={handleCreateAluno}>
+                  <input type="text" placeholder="Nome" value={alunoNome} onChange={(event) => setAlunoNome(event.target.value)} required />
+                  <input type="text" placeholder="Matrícula" value={alunoMatricula} onChange={(event) => setAlunoMatricula(event.target.value)} required />
+                  <input type="email" placeholder="E-mail" value={alunoEmail} onChange={(event) => setAlunoEmail(event.target.value)} />
+                  <input type="text" placeholder="Senha padrão" value={alunoSenhaPadrao} onChange={(event) => setAlunoSenhaPadrao(event.target.value)} />
+                  <button className="btn" type="submit">Cadastrar aluno</button>
+                </form>
+
+                <h2>Cadastro em massa (CSV simples)</h2>
+                <form className="form-grid" onSubmit={handleBulkCadastro}>
+                  <textarea
+                    rows={5}
+                    placeholder="nome,matricula,email&#10;Maria,20260003,maria@mail.com"
+                    value={bulkCsv}
+                    onChange={(event) => setBulkCsv(event.target.value)}
+                  />
+                  <button className="btn btn-secondary" type="submit">Importar em massa</button>
+                </form>
+
+                <h2>Alunos</h2>
+                <table className="table">
+                  <thead><tr><th>Nome</th><th>Matrícula</th><th>Status</th></tr></thead>
+                  <tbody>
+                    {alunos.map((aluno) => (
+                      <tr key={aluno.id}><td>{aluno.nome}</td><td>{aluno.matricula}</td><td>{aluno.status}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+            )}
+
+            {activeModule === 'matriculas' && (
+              <section className="card">
+                <h2>Vincular aluno à disciplina</h2>
+                <form className="form-grid" onSubmit={handleCreateMatricula}>
+                  <select value={matriculaAlunoId} onChange={(event) => setMatriculaAlunoId(event.target.value)} required>
+                    <option value="">Selecione aluno</option>
+                    {alunos.map((aluno) => (
+                      <option key={aluno.id} value={aluno.id}>{aluno.nome} · {aluno.matricula}</option>
+                    ))}
+                  </select>
+                  <select value={matriculaDisciplinaId} onChange={(event) => setMatriculaDisciplinaId(event.target.value)} required>
+                    <option value="">Selecione disciplina</option>
+                    {disciplines.map((discipline) => (
+                      <option key={discipline.id} value={discipline.id}>{discipline.title}</option>
+                    ))}
+                  </select>
+                  <button className="btn" type="submit">Matricular</button>
+                </form>
+
+                <ul className="list-simple">
+                  {matriculas.map((item) => (
+                    <li key={item.id}>{item.aluno_nome} → {item.disciplina_title} ({item.status})</li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {activeModule === 'notas' && (
+              <section className="card">
+                <h2>Lançamento de notas</h2>
+                <form className="form-grid" onSubmit={handleLaunchGrade}>
+                  <select value={notaAlunoId} onChange={(event) => setNotaAlunoId(event.target.value)} required>
+                    <option value="">Aluno</option>
+                    {alunos.map((aluno) => <option key={aluno.id} value={aluno.id}>{aluno.nome}</option>)}
+                  </select>
+                  <select value={notaDisciplinaId} onChange={(event) => setNotaDisciplinaId(event.target.value)} required>
+                    <option value="">Disciplina</option>
+                    {disciplines.map((discipline) => <option key={discipline.id} value={discipline.id}>{discipline.title}</option>)}
+                  </select>
+                  <input type="text" placeholder="Avaliação" value={avaliacao} onChange={(event) => setAvaliacao(event.target.value)} required />
+                  <input type="number" step="0.01" min="0" max="10" placeholder="Nota" value={notaValor} onChange={(event) => setNotaValor(event.target.value)} required />
+                  <button className="btn" type="submit">Salvar nota</button>
+                </form>
+
+                <table className="table">
+                  <thead><tr><th>Aluno</th><th>Disciplina</th><th>Avaliação</th><th>Nota</th></tr></thead>
+                  <tbody>
+                    {notas.map((item) => (
+                      <tr key={item.id}><td>{item.aluno_nome}</td><td>{item.disciplina_title}</td><td>{item.avaliacao}</td><td>{item.nota}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+            )}
+
+            {activeModule === 'progresso' && (
+              <section className="card">
+                <h2>Progresso por aluno</h2>
+                <form className="form-grid" onSubmit={handleUpdateProgress}>
+                  <select value={progAlunoId} onChange={(event) => setProgAlunoId(event.target.value)} required>
+                    <option value="">Aluno</option>
+                    {alunos.map((aluno) => <option key={aluno.id} value={aluno.id}>{aluno.nome}</option>)}
+                  </select>
+                  <select value={progDisciplinaId} onChange={(event) => setProgDisciplinaId(event.target.value)} required>
+                    <option value="">Disciplina</option>
+                    {disciplines.map((discipline) => <option key={discipline.id} value={discipline.id}>{discipline.title}</option>)}
+                  </select>
+                  <input type="number" min="0" placeholder="Aulas concluídas" value={progConcluido} onChange={(event) => setProgConcluido(event.target.value)} required />
+                  <input type="number" min="0" placeholder="Total de aulas" value={progTotal} onChange={(event) => setProgTotal(event.target.value)} required />
+                  <button className="btn" type="submit">Atualizar progresso</button>
+                </form>
+
+                <table className="table">
+                  <thead><tr><th>Aluno</th><th>Disciplina</th><th>Concluído</th><th>Progresso</th></tr></thead>
+                  <tbody>
+                    {progresso.map((item) => (
+                      <tr key={item.id}>
+                        <td>{item.aluno_nome}</td>
+                        <td>{item.disciplina_title}</td>
+                        <td>{item.concluido}/{item.total}</td>
+                        <td>{item.percentual}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+            )}
+
+            {activeModule === 'certidoes' && (
+              <section className="card">
+                <h2>Certidão de conclusão</h2>
+                <form className="form-grid" onSubmit={handleEmitCertificate}>
+                  <select value={certAlunoId} onChange={(event) => setCertAlunoId(event.target.value)} required>
+                    <option value="">Aluno</option>
+                    {alunos.map((aluno) => <option key={aluno.id} value={aluno.id}>{aluno.nome}</option>)}
+                  </select>
+                  <select value={certDisciplinaId} onChange={(event) => setCertDisciplinaId(event.target.value)} required>
+                    <option value="">Disciplina</option>
+                    {disciplines.map((discipline) => <option key={discipline.id} value={discipline.id}>{discipline.title}</option>)}
+                  </select>
+                  <input type="number" step="0.01" min="0" max="10" value={notaMinima} onChange={(event) => setNotaMinima(event.target.value)} />
+                  <input type="number" step="0.01" min="0" max="100" value={progressoMinimo} onChange={(event) => setProgressoMinimo(event.target.value)} />
+                  <button className="btn" type="submit">Emitir certidão</button>
+                </form>
+
+                <table className="table">
+                  <thead><tr><th>Aluno</th><th>Disciplina</th><th>Status</th><th>Ação</th></tr></thead>
+                  <tbody>
+                    {certidoes.map((item) => (
+                      <tr key={item.id}>
+                        <td>{item.aluno_nome}</td>
+                        <td>{item.disciplina_title}</td>
+                        <td>{item.status}</td>
+                        <td><button className="btn btn-secondary" type="button" onClick={() => handleDownloadCert(item)}>Download</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+            )}
+
+            {activeModule === 'integracoes' && (
+              <section className="card">
+                <h2>Integrações e webhook</h2>
+                <p>Endpoint para webhook externo: <span className="inline-code">/api/webhook</span></p>
+                <button className="btn" type="button" onClick={handleSimulateWebhook}>Simular webhook sem integração externa</button>
+
+                <h3>Logs</h3>
+                <table className="table">
+                  <thead><tr><th>Origem</th><th>Evento</th><th>Status</th><th>Data</th></tr></thead>
+                  <tbody>
+                    {integracoes.map((item) => (
+                      <tr key={item.id}>
+                        <td>{item.source}</td>
+                        <td>{item.event_type}</td>
+                        <td>{item.status}</td>
+                        <td>{formatDate(item.created_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+            )}
+          </>
+        )}
+      </main>
+    </div>
+  )
+}
+
 function App() {
+  const [user, setUser] = useState(null)
+  const [mustChangePassword, setMustChangePassword] = useState(false)
+
   const path = window.location.pathname
   const fullMatch = path.match(/^\/(?:aula|student)\/([^/]+)\/([^/]+)$/)
 
@@ -553,7 +941,21 @@ function App() {
     return <StudentView lessonId={decodeURIComponent(legacyMatch[1])} />
   }
 
-  return <TeacherView />
+  if (!user) {
+    return <LoginView onLogin={(nextUser) => {
+      setUser(nextUser)
+      setMustChangePassword(Boolean(nextUser.firstAccess))
+    }} />
+  }
+
+  if (mustChangePassword) {
+    return <ChangePasswordView user={user} onChanged={() => setMustChangePassword(false)} />
+  }
+
+  return <PortalView user={user} onLogout={() => {
+    setUser(null)
+    setMustChangePassword(false)
+  }} />
 }
 
 export default App
