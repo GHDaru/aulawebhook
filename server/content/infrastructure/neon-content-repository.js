@@ -127,8 +127,10 @@ async function createContentRepository() {
     },
 
     async deleteDiscipline(id) {
-      await sql`DELETE FROM aulas WHERE disciplina_id = ${id}`
-      await sql`DELETE FROM disciplinas WHERE id = ${id}`
+      await sql.transaction([
+        sql`DELETE FROM aulas WHERE disciplina_id = ${id}`,
+        sql`DELETE FROM disciplinas WHERE id = ${id}`,
+      ])
     },
 
     async deleteLegacyLesson(id) {

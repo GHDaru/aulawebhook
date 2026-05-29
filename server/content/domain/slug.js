@@ -26,17 +26,13 @@ function validateSlug(value) {
 
 async function generateUniqueSlug({ value, fallback, exists }) {
   const baseSlug = slugify(value, fallback)
-  let candidate = baseSlug
-  let suffix = 2
-
-  while (suffix <= MAX_SLUG_ATTEMPTS) {
+  
+  for (let attempt = 1; attempt <= MAX_SLUG_ATTEMPTS; attempt += 1) {
+    const candidate = attempt === 1 ? baseSlug : `${baseSlug}-${attempt}`
     const alreadyExists = await exists(candidate)
     if (!alreadyExists) {
       return { baseSlug, slug: candidate }
     }
-
-    candidate = `${baseSlug}-${suffix}`
-    suffix += 1
   }
 
   return null
