@@ -52,9 +52,7 @@ async function ensureDefaultUsers(sql) {
       SET nome = EXCLUDED.nome,
         matricula = EXCLUDED.matricula,
         role = EXCLUDED.role,
-        senha_hash = EXCLUDED.senha_hash,
-        first_access = true
-      WHERE usuarios.senha_hash NOT LIKE 'scrypt$%'
+        senha_hash = CASE WHEN usuarios.first_access THEN EXCLUDED.senha_hash ELSE usuarios.senha_hash END
     `
   }
 }
