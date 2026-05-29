@@ -1,11 +1,11 @@
 {
   "rewrites": [
     {
-      "source": "/student/:id",
+      "source": "/student/:path*",
       "destination": "/index.html"
     },
     {
-      "source": "/aula/:id",
+      "source": "/aula/:path*",
       "destination": "/index.html"
     }
   ]

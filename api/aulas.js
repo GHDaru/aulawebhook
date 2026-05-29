@@ -10,8 +10,8 @@ function normalizeBaseName(filename) {
   return filename.replace(/\.html?$/i, '')
 }
 
-function slugifyLessonName(filename) {
-  const normalized = normalizeBaseName(filename)
+function slugify(value, fallback) {
+  const normalized = normalizeBaseName(value)
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
@@ -19,7 +19,7 @@ function slugifyLessonName(filename) {
     .replace(/^-+|-+$/g, '')
     .slice(0, 60)
 
-  return normalized || 'portal-academico'
+  return normalized || fallback
 }
 
 function formatLessonTitle(slug) {
@@ -53,75 +53,91 @@ function parseJsonBody(body) {
   return body
 }
 
-async function listLessons(req, res) {
+function buildStudentUrl(origin, disciplineId, lessonId) {
+  return `${origin}/student/${disciplineId}/${lessonId}`
+}
+
+async function listDisciplines(req, res) {
   try {
     const sql = await initDb()
-    const rows = await sql`SELECT id, created_at FROM aulas ORDER BY created_at DESC`
     const origin = resolveOrigin(req)
 
-    const lessons = rows.map((row) => ({
-      id: row.id,
-      slug: row.id,
-      title: formatLessonTitle(row.id),
-      studentUrl: `${origin}/student/${row.id}`,
-      uploadedAt: row.created_at,
+    const [disciplines, rows] = await Promise.all([
+      sql`SELECT id, title, created_at FROM disciplinas ORDER BY created_at DESC`,
+      sql`
+        SELECT id, disciplina_id, title, lesson_order, created_at
+        FROM aulas
+        WHERE disciplina_id IS NOT NULL
+        ORDER BY disciplina_id ASC, lesson_order ASC
+      `,
+    ])
+
+    const lessonsByDiscipline = new Map()
+
+    rows.forEach((row) => {
+      const items = lessonsByDiscipline.get(row.disciplina_id) || []
+      items.push({
+        id: row.id,
+        slug: row.id,
+        title: row.title || formatLessonTitle(row.id),
+        order: row.lesson_order,
+        studentUrl: buildStudentUrl(origin, row.disciplina_id, row.id),
+        uploadedAt: row.created_at,
+      })
+      lessonsByDiscipline.set(row.disciplina_id, items)
+    })
+
+    const lessons = disciplines.map((discipline) => ({
+      id: discipline.id,
+      slug: discipline.id,
+      title: discipline.title,
+      createdAt: discipline.created_at,
+      lessons: lessonsByDiscipline.get(discipline.id) || [],
     }))
 
     return res.status(200).json({ lessons })
   } catch (error) {
     return res.status(500).json({
-      error: 'Erro ao listar os portais publicados.',
+      error: 'Erro ao listar disciplinas publicadas.',
       details: error?.message,
     })
   }
 }
 
-async function createLesson(req, res) {
+async function createDiscipline(req, res) {
   try {
-    const { filename, html } = parseJsonBody(req.body)
+    const { title } = parseJsonBody(req.body)
 
-    if (!html || typeof html !== 'string') {
-      return res.status(400).json({ error: 'Conteúdo HTML inválido.' })
-    }
-
-    const htmlSize = new TextEncoder().encode(html).length
-    if (htmlSize > MAX_HTML_SIZE_BYTES) {
-      return res.status(400).json({
-        error: 'Arquivo HTML muito grande. Limite de 1.5 MB.',
-      })
-    }
-
-    const fileName = typeof filename === 'string' ? filename.toLowerCase() : ''
-    if (fileName && !fileName.endsWith('.html')) {
-      return res.status(400).json({ error: 'Envie um arquivo com extensão .html.' })
+    if (!title || typeof title !== 'string' || title.trim().length < 3) {
+      return res.status(400).json({ error: 'Informe o nome da disciplina com pelo menos 3 caracteres.' })
     }
 
     const sql = await initDb()
-    const baseSlug = slugifyLessonName(fileName)
-    let lessonId = baseSlug
+    const baseSlug = slugify(title, 'disciplina')
+    let disciplineId = baseSlug
     let suffix = 2
 
     while (true) {
-      const existing = await sql`SELECT 1 FROM aulas WHERE id = ${lessonId} LIMIT 1`
+      const existing = await sql`SELECT 1 FROM disciplinas WHERE id = ${disciplineId} LIMIT 1`
       if (!existing.length) {
         break
       }
 
-      lessonId = `${baseSlug}-${suffix}`
+      disciplineId = `${baseSlug}-${suffix}`
       suffix += 1
     }
 
-    await sql`INSERT INTO aulas (id, html) VALUES (${lessonId}, ${html})`
+    await sql`INSERT INTO disciplinas (id, title) VALUES (${disciplineId}, ${title.trim()})`
 
     return res.status(201).json({
-      id: lessonId,
-      slug: lessonId,
-      title: formatLessonTitle(lessonId),
-      studentUrl: `${resolveOrigin(req)}/student/${lessonId}`,
+      id: disciplineId,
+      slug: disciplineId,
+      title: title.trim(),
+      lessons: [],
     })
   } catch (error) {
     return res.status(500).json({
-      error: 'Erro ao publicar a aula.',
+      error: 'Erro ao cadastrar disciplina.',
       details: error?.message,
     })
   }
@@ -129,13 +145,15 @@ async function createLesson(req, res) {
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
-    return listLessons(req, res)
+    return listDisciplines(req, res)
   }
 
   if (req.method === 'POST') {
-    return createLesson(req, res)
+    return createDiscipline(req, res)
   }
 
   res.setHeader('Allow', 'GET, POST')
   return res.status(405).json({ error: 'Método não permitido.' })
 }
+
+export { MAX_HTML_SIZE_BYTES, parseJsonBody, slugify, formatLessonTitle, buildStudentUrl }

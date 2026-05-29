@@ -127,14 +127,21 @@ label {
   font-weight: 600;
 }
 
-input[type='file'] {
+input[type='file'],
+input[type='text'],
+select {
   display: block;
   width: 100%;
   margin-bottom: 14px;
-  padding: 16px;
-  border: 1px dashed rgba(13, 98, 71, 0.3);
-  border-radius: 18px;
+  padding: 14px;
+  border: 1px solid rgba(13, 98, 71, 0.3);
+  border-radius: 14px;
   background: #f8fcf9;
+  color: #103527;
+}
+
+input[type='file'] {
+  border-style: dashed;
 }
 
 .btn {
@@ -172,6 +179,11 @@ input[type='file'] {
   color: #fff;
 }
 
+.btn-disabled {
+  opacity: 0.5;
+  pointer-events: auto;
+}
+
 .actions {
   display: flex;
   gap: 10px;
@@ -205,9 +217,24 @@ input[type='file'] {
   font-weight: 600;
 }
 
+.lesson-wrapper {
+  width: 100%;
+  min-height: 100vh;
+}
+
+.lesson-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px;
+  border-bottom: 1px solid rgba(13, 98, 71, 0.12);
+  background: rgba(244, 251, 247, 0.9);
+}
+
 .full-lesson {
   width: 100%;
-  height: 100vh;
+  height: calc(100vh - 110px);
 }
 
 .full-lesson iframe {
@@ -276,6 +303,24 @@ input[type='file'] {
   min-width: 190px;
 }
 
+.lesson-list {
+  margin: 16px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 12px;
+}
+
+.lesson-list li {
+  border: 1px solid rgba(13, 98, 71, 0.1);
+  border-radius: 14px;
+  background: #fff;
+  padding: 12px;
+}
+
+.lesson-actions {
+  margin-top: 10px;
+}
+
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -290,7 +335,8 @@ input[type='file'] {
 @media (max-width: 840px) {
   .hero-card,
   .portal-item,
-  .section-heading {
+  .section-heading,
+  .lesson-nav {
     flex-direction: column;
   }
 
@@ -301,5 +347,9 @@ input[type='file'] {
   .portal-actions {
     min-width: 0;
     justify-content: flex-start;
+  }
+
+  .full-lesson {
+    height: calc(100vh - 180px);
   }
 }
