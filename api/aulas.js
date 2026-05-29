@@ -2,6 +2,7 @@ import { initDb } from './db.js'
 
 const MAX_HTML_SIZE_BYTES = 1_500_000
 const MAX_SLUG_ATTEMPTS = 100
+const VALID_ROLES = new Set(['admin', 'professor', 'aluno'])
 
 function normalizeBaseName(filename) {
   if (typeof filename !== 'string') {
@@ -55,7 +56,7 @@ function parseJsonBody(body) {
 }
 
 function normalizeRole(role) {
-  if (role === 'admin' || role === 'professor' || role === 'aluno') return role
+  if (VALID_ROLES.has(role)) return role
   return ''
 }
 
@@ -80,6 +81,13 @@ function validateManagerActor(actor) {
     return { status: 403, error: 'Apenas professor ou admin podem cadastrar disciplinas.' }
   }
 
+  const professorError = validateProfessorActor(actor)
+  if (professorError) return professorError
+
+  return null
+}
+
+function validateProfessorActor(actor) {
   if (actor.userRole === 'professor' && !actor.userId) {
     return { status: 401, error: 'Professor não autenticado.' }
   }
@@ -97,9 +105,8 @@ async function listDisciplines(req, res) {
     const origin = resolveOrigin(req)
     const actor = extractActor(req)
 
-    if (actor.userRole === 'professor' && !actor.userId) {
-      return res.status(401).json({ error: 'Professor não autenticado.' })
-    }
+    const professorError = validateProfessorActor(actor)
+    if (professorError) return res.status(professorError.status).json({ error: professorError.error })
 
     const disciplineQuery = actor.userRole === 'professor'
       ? sql`SELECT id, title, professor_id, created_at FROM disciplinas WHERE professor_id = ${actor.userId} ORDER BY created_at DESC`
