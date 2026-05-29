@@ -258,6 +258,36 @@ textarea {
   gap: 8px;
 }
 
+.discipline-accordion-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.discipline-accordion {
+  border: 1px solid rgba(13, 98, 71, 0.18);
+  border-radius: 12px;
+  background: #fbfefc;
+  overflow: hidden;
+}
+
+.discipline-accordion summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 12px 14px;
+}
+
+.discipline-accordion summary::-webkit-details-marker {
+  display: none;
+}
+
+.discipline-accordion-content {
+  border-top: 1px solid rgba(13, 98, 71, 0.14);
+  padding: 12px 14px 14px;
+  display: grid;
+  gap: 8px;
+}
+
 .lesson-wrapper {
   display: flex;
   flex-direction: column;
