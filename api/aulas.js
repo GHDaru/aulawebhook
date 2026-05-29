@@ -1,6 +1,7 @@
 import { initDb } from './db.js'
 
 const MAX_HTML_SIZE_BYTES = 1_500_000
+const MAX_SLUG_ATTEMPTS = 100
 
 function normalizeBaseName(filename) {
   if (typeof filename !== 'string') {
@@ -117,7 +118,7 @@ async function createDiscipline(req, res) {
     let disciplineId = baseSlug
     let suffix = 2
 
-    while (true) {
+    while (suffix <= MAX_SLUG_ATTEMPTS) {
       const existing = await sql`SELECT 1 FROM disciplinas WHERE id = ${disciplineId} LIMIT 1`
       if (!existing.length) {
         break
@@ -125,6 +126,10 @@ async function createDiscipline(req, res) {
 
       disciplineId = `${baseSlug}-${suffix}`
       suffix += 1
+    }
+
+    if (suffix > MAX_SLUG_ATTEMPTS) {
+      return res.status(409).json({ error: 'Não foi possível gerar um identificador único para a disciplina.' })
     }
 
     await sql`INSERT INTO disciplinas (id, title) VALUES (${disciplineId}, ${title.trim()})`

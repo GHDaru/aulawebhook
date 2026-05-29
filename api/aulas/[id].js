@@ -7,6 +7,8 @@ import {
 } from '../aulas.js'
 import { initDb } from '../db.js'
 
+const MAX_SLUG_ATTEMPTS = 100
+
 function validateSlug(value) {
   return typeof value === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(value)
 }
@@ -57,7 +59,7 @@ async function addLesson(req, res, disciplineId) {
     let lessonId = baseSlug
     let suffix = 2
 
-    while (true) {
+    while (suffix <= MAX_SLUG_ATTEMPTS) {
       const existing = await sql`SELECT 1 FROM aulas WHERE id = ${lessonId} LIMIT 1`
       if (!existing.length) {
         break
@@ -65,6 +67,10 @@ async function addLesson(req, res, disciplineId) {
 
       lessonId = `${baseSlug}-${suffix}`
       suffix += 1
+    }
+
+    if (suffix > MAX_SLUG_ATTEMPTS) {
+      return res.status(409).json({ error: 'Não foi possível gerar um identificador único para a aula.' })
     }
 
     const orderRows = await sql`
