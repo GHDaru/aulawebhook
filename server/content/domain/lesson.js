@@ -34,7 +34,7 @@ function validateLessonFilename(filename) {
   }
 }
 
-function createLesson({ id, disciplineId, disciplineTitle, html, order, title }) {
+function createLesson({ id, disciplineId, disciplineTitle, html, order = null, title }) {
   return {
     id,
     slug: id,

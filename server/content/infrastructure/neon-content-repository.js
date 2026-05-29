@@ -113,6 +113,8 @@ async function createContentRepository() {
     },
 
     async createLesson(lesson) {
+      let lastError = null
+
       for (let attempt = 1; attempt <= 3; attempt += 1) {
         try {
           const rows = await sql`
@@ -128,6 +130,7 @@ async function createContentRepository() {
 
           return Number(rows[0]?.lesson_order ?? 0)
         } catch (error) {
+          lastError = error
           const message = String(error?.message || '')
           const isOrderCollision = message.includes('aulas_disciplina_lesson_order_unique_idx')
 
@@ -139,7 +142,7 @@ async function createContentRepository() {
         }
       }
 
-      return 0
+      throw lastError
     },
 
     async listLessonsByDiscipline(disciplineId) {
@@ -172,10 +175,20 @@ async function createContentRepository() {
     },
 
     async deleteDiscipline(id) {
-      await sql.transaction((tx) => [
-        tx`DELETE FROM aulas WHERE disciplina_id = ${id}`,
-        tx`DELETE FROM disciplinas WHERE id = ${id}`,
-      ])
+      await sql`
+        WITH deleted_lessons AS (
+          DELETE FROM aulas
+          WHERE disciplina_id = ${id}
+          RETURNING id
+        ),
+        deleted_discipline AS (
+          DELETE FROM disciplinas
+          WHERE id = ${id}
+          RETURNING id
+        )
+        SELECT COUNT(*)::int AS total
+        FROM deleted_discipline
+      `
     },
 
     async deleteLegacyLesson(id) {

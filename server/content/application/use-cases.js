@@ -93,7 +93,6 @@ async function publishLesson({ disciplineId, filename, html, title, actor, origi
     disciplineId,
     disciplineTitle: discipline.title,
     html,
-    order: 0,
     title: trimmedTitle || formatLessonTitle(baseSlug),
   })
 
