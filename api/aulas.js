@@ -1,4 +1,5 @@
 import { initDb } from './db.js'
+import { extractActor, validateDisciplineViewer, validateManagerActor } from './authz.js'
 
 const MAX_HTML_SIZE_BYTES = 1_500_000
 const MAX_SLUG_ATTEMPTS = 100
@@ -62,9 +63,17 @@ async function listDisciplines(req, res) {
   try {
     const sql = await initDb()
     const origin = resolveOrigin(req)
+    const actor = extractActor(req)
+
+    const viewerError = validateDisciplineViewer(actor)
+    if (viewerError) return res.status(viewerError.status).json({ error: viewerError.error })
+
+    const disciplineQuery = actor.userRole === 'professor'
+      ? sql`SELECT id, title, professor_id, created_at FROM disciplinas WHERE professor_id = ${actor.userId} ORDER BY created_at DESC`
+      : sql`SELECT id, title, professor_id, created_at FROM disciplinas ORDER BY created_at DESC`
 
     const [disciplines, rows] = await Promise.all([
-      sql`SELECT id, title, created_at FROM disciplinas ORDER BY created_at DESC`,
+      disciplineQuery,
       sql`
         SELECT id, disciplina_id, title, lesson_order, created_at
         FROM aulas
@@ -92,6 +101,7 @@ async function listDisciplines(req, res) {
       id: discipline.id,
       slug: discipline.id,
       title: discipline.title,
+      professorId: discipline.professor_id || null,
       createdAt: discipline.created_at,
       lessons: lessonsByDiscipline.get(discipline.id) || [],
     }))
@@ -107,7 +117,11 @@ async function listDisciplines(req, res) {
 
 async function createDiscipline(req, res) {
   try {
-    const { title } = parseJsonBody(req.body)
+    const body = parseJsonBody(req.body)
+    const { title } = body
+    const actor = extractActor(req)
+    const actorError = validateManagerActor(actor, 'Apenas professor ou admin podem cadastrar disciplinas.')
+    if (actorError) return res.status(actorError.status).json({ error: actorError.error })
 
     if (!title || typeof title !== 'string' || title.trim().length < 3) {
       return res.status(400).json({ error: 'Informe o nome da disciplina com pelo menos 3 caracteres.' })
@@ -132,12 +146,14 @@ async function createDiscipline(req, res) {
       return res.status(409).json({ error: 'Não foi possível gerar um identificador único para a disciplina.' })
     }
 
-    await sql`INSERT INTO disciplinas (id, title) VALUES (${disciplineId}, ${title.trim()})`
+    const professorId = actor.userRole === 'professor' ? actor.userId : null
+    await sql`INSERT INTO disciplinas (id, title, professor_id) VALUES (${disciplineId}, ${title.trim()}, ${professorId})`
 
     return res.status(201).json({
       id: disciplineId,
       slug: disciplineId,
       title: title.trim(),
+      professorId,
       lessons: [],
     })
   } catch (error) {

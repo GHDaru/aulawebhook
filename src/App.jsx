@@ -363,6 +363,15 @@ function PortalView({ user, onLogout }) {
     return payload.items
   }, [])
 
+  const authHeaders = useMemo(() => {
+    const userId = typeof user.id === 'string' ? user.id : ''
+    const userRole = typeof user.role === 'string' ? user.role : ''
+    const headers = { 'Content-Type': 'application/json' }
+    if (userId) headers['x-user-id'] = userId
+    if (userRole) headers['x-user-role'] = userRole
+    return headers
+  }, [user.id, user.role])
+
   const loadAll = useCallback(async () => {
     setLoading(true)
     setError('')
@@ -370,7 +379,7 @@ function PortalView({ user, onLogout }) {
     try {
       const [dashboardItems, disciplinasPayload, alunosItems, matriculasItems, notasItems, progressoItems, certidoesItems, integracoesItems] = await Promise.all([
         loadResource('dashboard'),
-        fetch('/api/aulas').then(parseResponse),
+        fetch('/api/aulas', { headers: authHeaders }).then(parseResponse),
         loadResource('alunos'),
         loadResource('matriculas'),
         loadResource('notas'),
@@ -392,7 +401,7 @@ function PortalView({ user, onLogout }) {
     } finally {
       setLoading(false)
     }
-  }, [loadResource])
+  }, [authHeaders, loadResource])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -420,7 +429,7 @@ function PortalView({ user, onLogout }) {
     runAction(async () => {
       const response = await fetch('/api/aulas', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders,
         body: JSON.stringify({ title: disciplineTitle }),
       })
       await parseResponse(response)
@@ -438,8 +447,12 @@ function PortalView({ user, onLogout }) {
       const html = await lessonFile.text()
       const response = await fetch(`/api/aulas/${selectedDiscipline}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: lessonFile.name, html, title: lessonTitle || undefined }),
+        headers: authHeaders,
+        body: JSON.stringify({
+          filename: lessonFile.name,
+          html,
+          title: lessonTitle || undefined,
+        }),
       })
       await parseResponse(response)
       setLessonTitle('')
@@ -739,6 +752,26 @@ function PortalView({ user, onLogout }) {
                   />
                   <button className="btn" type="submit">Publicar aula</button>
                 </form>
+
+                <h2>Aulas por disciplina</h2>
+                {disciplines.length === 0 ? (
+                  <p className="helper-text">Nenhuma disciplina disponível para o seu perfil.</p>
+                ) : (
+                  <ul className="list-simple">
+                    {disciplines.map((discipline) => (
+                      <li key={discipline.id}>
+                        <strong>{discipline.title}</strong> ({discipline.lessons.length} aulas)
+                        {discipline.lessons.length > 0 && (
+                          <ul className="list-simple">
+                            {discipline.lessons.map((lesson) => (
+                              <li key={lesson.id}>{lesson.order}. {lesson.title}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </section>
             )}
 

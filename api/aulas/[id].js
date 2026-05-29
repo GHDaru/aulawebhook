@@ -5,6 +5,7 @@ import {
   parseJsonBody,
   slugify,
 } from '../aulas.js'
+import { extractActor, validateManagerActor } from '../authz.js'
 import { initDb } from '../db.js'
 
 const MAX_SLUG_ATTEMPTS = 100
@@ -25,9 +26,18 @@ function toSingleQueryValue(value) {
   return value
 }
 
+function canManageDiscipline(actor, discipline) {
+  if (actor.userRole === 'admin') return true
+  return discipline.professor_id === actor.userId
+}
+
 async function addLesson(req, res, disciplineId) {
   try {
-    const { filename, html, title } = parseJsonBody(req.body)
+    const body = parseJsonBody(req.body)
+    const { filename, html, title } = body
+    const actor = extractActor(req)
+    const actorError = validateManagerActor(actor, 'Apenas professor ou admin podem administrar aulas.')
+    if (actorError) return res.status(actorError.status).json({ error: actorError.error })
 
     if (!validateSlug(disciplineId)) {
       return res.status(400).json({ error: 'Identificador de disciplina inválido.' })
@@ -48,10 +58,14 @@ async function addLesson(req, res, disciplineId) {
     }
 
     const sql = await initDb()
-    const discipline = await sql`SELECT id, title FROM disciplinas WHERE id = ${disciplineId} LIMIT 1`
+    const discipline = await sql`SELECT id, title, professor_id FROM disciplinas WHERE id = ${disciplineId} LIMIT 1`
 
     if (!discipline.length) {
       return res.status(404).json({ error: 'Disciplina não encontrada.' })
+    }
+
+    if (!canManageDiscipline(actor, discipline[0])) {
+      return res.status(403).json({ error: 'Você só pode administrar aulas das suas disciplinas.' })
     }
 
     const slugSource = fileName || title || 'aula'
@@ -207,9 +221,15 @@ async function deleteDisciplineOrLegacy(req, res, lessonOrDisciplineId) {
     }
 
     const sql = await initDb()
+    const actor = extractActor(req)
 
-    const discipline = await sql`SELECT id FROM disciplinas WHERE id = ${lessonOrDisciplineId} LIMIT 1`
+    const discipline = await sql`SELECT id, professor_id FROM disciplinas WHERE id = ${lessonOrDisciplineId} LIMIT 1`
     if (discipline.length) {
+      const actorError = validateManagerActor(actor, 'Apenas professor ou admin podem administrar aulas.')
+      if (actorError) return res.status(actorError.status).json({ error: actorError.error })
+      if (!canManageDiscipline(actor, discipline[0])) {
+        return res.status(403).json({ error: 'Você só pode administrar aulas das suas disciplinas.' })
+      }
       await sql`DELETE FROM aulas WHERE disciplina_id = ${lessonOrDisciplineId}`
       await sql`DELETE FROM disciplinas WHERE id = ${lessonOrDisciplineId}`
       return res.status(200).json({ id: lessonOrDisciplineId, deleted: true, type: 'discipline' })

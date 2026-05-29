@@ -40,10 +40,12 @@ export async function initDb() {
     CREATE TABLE IF NOT EXISTS disciplinas (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
+      professor_id TEXT,
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `
 
+  await sql`ALTER TABLE disciplinas ADD COLUMN IF NOT EXISTS professor_id TEXT`
   await sql`ALTER TABLE aulas ADD COLUMN IF NOT EXISTS disciplina_id TEXT`
   await sql`ALTER TABLE aulas ADD COLUMN IF NOT EXISTS lesson_order INTEGER`
   await sql`ALTER TABLE aulas ADD COLUMN IF NOT EXISTS title TEXT`
@@ -57,6 +59,11 @@ export async function initDb() {
     CREATE UNIQUE INDEX IF NOT EXISTS aulas_disciplina_lesson_order_unique_idx
     ON aulas (disciplina_id, lesson_order)
     WHERE disciplina_id IS NOT NULL
+  `
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS disciplinas_professor_id_idx
+    ON disciplinas (professor_id)
   `
 
   return sql
