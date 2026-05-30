@@ -13,12 +13,14 @@ import { DEFAULT_DISCIPLINE_SLUG, DEFAULT_LESSON_SLUG, pickAvailableSlug, slugif
 import { buildStudentUrl } from '../infrastructure/http.js'
 
 function escapeHtml(value) {
-  return String(value || '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
+  return String(value || '').replace(/[&<>"'/]/g, (character) => {
+    if (character === '&') return '&amp;'
+    if (character === '<') return '&lt;'
+    if (character === '>') return '&gt;'
+    if (character === '"') return '&quot;'
+    if (character === '/') return '&#x2F;'
+    return '&#39;'
+  })
 }
 
 function resolveVideoEmbedUrl(videoUrl) {
@@ -50,12 +52,12 @@ function buildLessonHtml(lesson) {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; frame-src https://www.youtube.com https://player.vimeo.com; img-src 'self' data:; connect-src 'none'; script-src 'none';" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; frame-src https://www.youtube.com/embed/ https://player.vimeo.com/video/; img-src 'self' data:; connect-src 'none'; script-src 'none'; frame-ancestors 'none';" />
     <title>${safeTitle}</title>
   </head>
   <body>
     <main>
-      <iframe src="${embedUrl}" title="${safeTitle}" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" width="960" height="540"></iframe>
+      <iframe src="${embedUrl}" title="${safeTitle}" allowfullscreen sandbox="allow-scripts allow-same-origin allow-presentation" referrerpolicy="strict-origin-when-cross-origin" width="960" height="540"></iframe>
       <div>
         <a href="${safeVideoUrl}" target="_blank" rel="noreferrer">Abrir vídeo em nova aba</a>
       </div>
@@ -98,7 +100,7 @@ async function listDisciplines({ actor, origin, repository }) {
       lessons: lessonsByDiscipline.get(discipline.id) || [],
     }))
 
-  return { courses, lessons: courses }
+  return { courses }
 }
 
 async function registerDiscipline({ title, actor, repository }) {
@@ -248,10 +250,6 @@ async function loadLesson({ disciplineId, lessonId, origin, repository }) {
 
   return {
     course: {
-      id: discipline.id,
-      title: discipline.title,
-    },
-    discipline: {
       id: discipline.id,
       title: discipline.title,
     },

@@ -23,8 +23,9 @@ function firstHeaderValue(value) {
 
 function filterAlunoItems(resource, items, matricula) {
   if (!matricula) {
+    console.warn('Acesso acadêmico de aluno sem matrícula identificada.', { resource })
     return resource === 'dashboard'
-      ? { disciplinas: 0, aulas: 0, alunos: 0, matriculas: 0, notas: 0, certidoes: 0, webhooks: 0 }
+      ? { cursos: 0, aulas: 0, alunos: 0, matriculas: 0, notas: 0, certidoes: 0, webhooks: 0 }
       : []
   }
   if (resource === 'matriculas' || resource === 'notas' || resource === 'progresso' || resource === 'certidoes') {
@@ -39,7 +40,7 @@ function filterAlunoItems(resource, items, matricula) {
     const cursos = new Set(matriculas.map((item) => item.disciplina_title).filter(Boolean))
     const aulas = progresso.reduce((total, item) => total + (Number(item.total) || 0), 0)
     return {
-      disciplinas: cursos.size,
+      cursos: cursos.size,
       aulas,
       alunos: 0,
       matriculas: matriculas.length,

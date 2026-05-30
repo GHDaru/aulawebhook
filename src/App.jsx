@@ -218,7 +218,7 @@ function StudentView({ disciplineId, lessonId }) {
       {metadata && (
         <header className="lesson-nav">
           <div>
-            <strong>{metadata.course?.title || metadata.discipline.title}</strong>
+            <strong>{metadata.course.title}</strong>
             <p className="portal-meta">
               {metadata.lesson.title} ({metadata.navigation.index}/{metadata.navigation.total})
             </p>
@@ -437,7 +437,7 @@ function PortalView({ user, onLogout }) {
       ])
 
       setDashboard(dashboardItems)
-      setDisciplines(disciplinasPayload.courses || disciplinasPayload.lessons || [])
+      setDisciplines(disciplinasPayload.courses || [])
       setAlunos(alunosItems || [])
       setMatriculas(matriculasItems || [])
       setNotas(notasItems || [])
@@ -512,6 +512,9 @@ function PortalView({ user, onLogout }) {
       if (lessonType === 'html' && !lessonFile && !lessonHtmlContent.trim()) {
         throw new Error('Informe o HTML da aula ou envie um arquivo.')
       }
+      if (lessonType === 'video' && !lessonVideoUrl.trim()) {
+        throw new Error('Informe a URL do vídeo da aula.')
+      }
       const html = lessonType === 'html'
         ? (lessonFile ? await lessonFile.text() : lessonHtmlContent)
         : ''
@@ -561,6 +564,9 @@ function PortalView({ user, onLogout }) {
       }
       if (editingLessonType === 'html' && !editingLessonHtml.trim()) {
         throw new Error('Informe o HTML atualizado da aula.')
+      }
+      if (editingLessonType === 'video' && !editingLessonVideoUrl.trim()) {
+        throw new Error('Informe a URL do vídeo da aula.')
       }
 
       const response = await fetch(`/api/aulas/${editingCourseId}?lesson=${encodeURIComponent(editingLessonId)}`, {
@@ -853,7 +859,7 @@ function PortalView({ user, onLogout }) {
                 ) : (
                   <>
                     <div className="kpi-grid">
-                      <article className="kpi-card"><span>Cursos</span><strong>{dashboard.disciplinas || 0}</strong></article>
+                      <article className="kpi-card"><span>Cursos</span><strong>{dashboard.cursos || 0}</strong></article>
                       <article className="kpi-card"><span>Aulas</span><strong>{dashboard.aulas || 0}</strong></article>
                       <article className="kpi-card"><span>Alunos</span><strong>{dashboard.alunos || 0}</strong></article>
                       <article className="kpi-card"><span>Matrículas</span><strong>{dashboard.matriculas || 0}</strong></article>

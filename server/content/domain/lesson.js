@@ -47,7 +47,7 @@ function validateVideoUrl(videoUrl) {
   try {
     parsedUrl = new URL(String(videoUrl || ''))
   } catch {
-    throw new ValidationError('Informe um link de vídeo válido.')
+    throw new ValidationError('Informe uma URL válida para o vídeo, como https://youtube.com/watch?v=...')
   }
 
   if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
