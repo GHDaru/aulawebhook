@@ -352,3 +352,24 @@ textarea {
     overflow-x: auto;
   }
 }
+
+.use-case-panel {
+  border-style: dashed;
+}
+
+.use-case-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.use-case-card {
+  border: 1px solid rgba(13, 98, 71, 0.14);
+  border-radius: 12px;
+  padding: 12px;
+  background: #fbfefc;
+}
+
+.use-case-card p {
+  margin: 6px 0 0;
+}

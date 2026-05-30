@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import './App.css'
+import { MODULE_USE_CASES } from './use-cases'
 
 const DATE_FORMATTER = new Intl.DateTimeFormat('pt-BR', {
   dateStyle: 'short',
@@ -254,6 +255,27 @@ function StudentView({ disciplineId, lessonId }) {
         />
       </section>
     </main>
+  )
+}
+
+
+function UseCasePanel({ moduleKey }) {
+  const items = MODULE_USE_CASES[moduleKey] || []
+  if (!items.length) return null
+
+  return (
+    <section className="card use-case-panel">
+      <h2>Casos de uso do módulo</h2>
+      <div className="use-case-grid">
+        {items.map((item) => (
+          <article key={item.id} className="use-case-card">
+            <strong>{item.title}</strong>
+            <p className="helper-text">Ator: {item.actor}</p>
+            <p>{item.goal}</p>
+          </article>
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -655,6 +677,7 @@ function PortalView({ user, onLogout }) {
           <p>Carregando dados do portal...</p>
         ) : (
           <>
+            <UseCasePanel moduleKey={activeModule} />
             {activeModule === 'dashboard' && (
               <section className="card">
                 <div className="kpi-grid">

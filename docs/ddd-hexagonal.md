@@ -221,18 +221,15 @@ Coordena casos de uso:
 
 ## 6. Implementação incremental realizada
 
-Foi iniciado o primeiro ciclo da migração no contexto de **Gestão de Conteúdo Didático**:
+A migração agora cobre os contextos de **Gestão de Conteúdo Didático**, **Gestão Acadêmica**, **Identidade e Acesso** e **Integrações**:
 
-1. criação do domínio explícito em `server/content/domain`
-2. criação de casos de uso em `server/content/application`
-3. criação do adaptador de persistência em `server/content/infrastructure`
-4. simplificação dos handlers `/api/aulas` e `/api/aulas/[id]`, que agora funcionam como adaptadores HTTP finos
+1. contexto de conteúdo em `server/content/{domain,application,infrastructure}`
+2. contexto acadêmico em `server/academic/{domain,application,infrastructure}`
+3. contexto de identidade em `server/identity/{domain,application,infrastructure}`
+4. contexto de integrações em `server/integrations/{application,infrastructure}`
+5. simplificação dos handlers HTTP (`/api/aulas`, `/api/academico`, `/api/auth/*`, `/api/webhook*`) para atuarem como adaptadores finos
 
-Essa migração preserva os contratos HTTP existentes e prepara o mesmo modelo para os próximos contextos:
-
-- Gestão Acadêmica
-- Identidade e Acesso
-- Integrações
+A migração preserva os contratos HTTP existentes e separa regras de negócio dos detalhes de transporte e persistência.
 
 ---
 

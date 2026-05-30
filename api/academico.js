@@ -7,13 +7,13 @@ import {
   listAlunos,
   listCertidoes,
   listDashboard,
-  listIntegracoes,
   listMatriculas,
   listNotas,
   listProgresso,
-  parseJsonBody,
   upsertProgresso,
-} from './academico-core.js'
+} from '../server/academic/application/use-cases.js'
+import { listIntegracoes } from '../server/integrations/application/use-cases.js'
+import { parseJsonBody } from '../server/shared/json.js'
 
 const ALLOWED_GET = new Set(['dashboard', 'alunos', 'matriculas', 'notas', 'progresso', 'certidoes', 'integracoes'])
 

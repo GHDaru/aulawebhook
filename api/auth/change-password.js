@@ -1,4 +1,6 @@
-import { changeUserPassword, parseJsonBody } from '../academico-core.js'
+import { changeUserPassword } from '../../server/identity/application/use-cases.js'
+import { InvalidPasswordError } from '../../server/identity/domain/errors.js'
+import { parseJsonBody } from '../../server/shared/json.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -8,14 +10,13 @@ export default async function handler(req, res) {
 
   try {
     const { userId, newPassword } = parseJsonBody(req.body)
-
-    if (!userId || !newPassword || String(newPassword).trim().length < 6) {
+    await changeUserPassword({ userId, newPassword: String(newPassword) })
+    return res.status(200).json({ changed: true })
+  } catch (error) {
+    if (error instanceof InvalidPasswordError || error?.status === 400) {
       return res.status(400).json({ error: 'Informe usuário e nova senha com no mínimo 6 caracteres.' })
     }
 
-    await changeUserPassword(userId, String(newPassword))
-    return res.status(200).json({ changed: true })
-  } catch (error) {
     return res.status(500).json({ error: 'Erro ao trocar senha.', details: error?.message })
   }
 }
