@@ -509,6 +509,9 @@ function PortalView({ user, onLogout }) {
       if (!selectedDiscipline) {
         throw new Error('Selecione um curso.')
       }
+      if (lessonType === 'html' && !lessonFile && !lessonHtmlContent.trim()) {
+        throw new Error('Informe o HTML da aula ou envie um arquivo.')
+      }
       const html = lessonType === 'html'
         ? (lessonFile ? await lessonFile.text() : lessonHtmlContent)
         : ''
@@ -555,6 +558,9 @@ function PortalView({ user, onLogout }) {
     runAction(async () => {
       if (!editingCourseId || !editingLessonId) {
         throw new Error('Selecione a aula que será atualizada.')
+      }
+      if (editingLessonType === 'html' && !editingLessonHtml.trim()) {
+        throw new Error('Informe o HTML atualizado da aula.')
       }
 
       const response = await fetch(`/api/aulas/${editingCourseId}?lesson=${encodeURIComponent(editingLessonId)}`, {
@@ -946,6 +952,7 @@ function PortalView({ user, onLogout }) {
                     <input
                       type="url"
                       placeholder="https://youtube.com/watch?v=..."
+                      aria-label="URL do vídeo da aula"
                       value={lessonVideoUrl}
                       onChange={(event) => setLessonVideoUrl(event.target.value)}
                       required
@@ -980,6 +987,7 @@ function PortalView({ user, onLogout }) {
                       <input
                         type="url"
                         placeholder="https://youtube.com/watch?v=..."
+                        aria-label="URL do vídeo da aula"
                         value={editingLessonVideoUrl}
                         onChange={(event) => setEditingLessonVideoUrl(event.target.value)}
                         required
@@ -1058,6 +1066,7 @@ function PortalView({ user, onLogout }) {
                                     <button
                                       className="btn btn-secondary"
                                       type="button"
+                                      aria-label="Mover aula para cima"
                                       onClick={() => handleMoveLesson(discipline.id, lesson.id, 'up')}
                                       disabled={index === 0}
                                     >
@@ -1066,6 +1075,7 @@ function PortalView({ user, onLogout }) {
                                     <button
                                       className="btn btn-secondary"
                                       type="button"
+                                      aria-label="Mover aula para baixo"
                                       onClick={() => handleMoveLesson(discipline.id, lesson.id, 'down')}
                                       disabled={index === discipline.lessons.length - 1}
                                     >

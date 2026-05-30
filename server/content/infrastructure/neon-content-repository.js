@@ -216,6 +216,15 @@ async function createContentRepository() {
       const targetOrder = direction === 'up' ? lesson.order - 1 : lesson.order + 1
       if (targetOrder < 1) return lesson
 
+      const maxOrderRows = await sql`
+        SELECT COALESCE(MAX(lesson_order), 0) AS max_order
+        FROM aulas
+        WHERE disciplina_id = ${disciplineId}
+      `
+
+      const maxOrder = Number(maxOrderRows[0]?.max_order ?? 0)
+      if (targetOrder > maxOrder) return lesson
+
       const swapRows = await sql`
         SELECT id, lesson_order
         FROM aulas

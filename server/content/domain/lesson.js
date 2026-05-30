@@ -2,6 +2,7 @@ import { ValidationError } from './errors.js'
 
 const MAX_HTML_SIZE_BYTES = 1_500_000
 const VALID_LESSON_TYPES = new Set(['html', 'video'])
+const ALLOWED_VIDEO_HOSTS = ['youtube.com', 'www.youtube.com', 'youtu.be', 'vimeo.com', 'www.vimeo.com', 'player.vimeo.com']
 
 function formatLessonTitle(slug) {
   return slug
@@ -46,6 +47,9 @@ function validateVideoUrl(videoUrl) {
     const parsedUrl = new URL(String(videoUrl || ''))
     if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
       throw new ValidationError('Informe um link de vídeo válido.')
+    }
+    if (!ALLOWED_VIDEO_HOSTS.some((host) => parsedUrl.hostname === host)) {
+      throw new ValidationError('Use um link de vídeo do YouTube ou Vimeo.')
     }
   } catch {
     throw new ValidationError('Informe um link de vídeo válido.')

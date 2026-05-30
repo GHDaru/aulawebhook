@@ -22,18 +22,29 @@ function firstHeaderValue(value) {
 }
 
 function filterAlunoItems(resource, items, matricula) {
-  if (!matricula) return []
+  if (!matricula) {
+    return resource === 'dashboard'
+      ? { disciplinas: 0, aulas: 0, alunos: 0, matriculas: 0, notas: 0, certidoes: 0, webhooks: 0 }
+      : []
+  }
   if (resource === 'matriculas' || resource === 'notas' || resource === 'progresso' || resource === 'certidoes') {
     return items.filter((item) => item.aluno_matricula === matricula)
   }
+
   if (resource === 'dashboard') {
+    const matriculas = Array.isArray(items.matriculas) ? items.matriculas : []
+    const notas = Array.isArray(items.notas) ? items.notas : []
+    const progresso = Array.isArray(items.progresso) ? items.progresso : []
+    const certidoes = Array.isArray(items.certidoes) ? items.certidoes : []
+    const cursos = new Set(matriculas.map((item) => item.disciplina_title).filter(Boolean))
+    const aulas = progresso.reduce((total, item) => total + (Number(item.total) || 0), 0)
     return {
-      disciplinas: 0,
-      aulas: 0,
+      disciplinas: cursos.size,
+      aulas,
       alunos: 0,
-      matriculas: 0,
-      notas: 0,
-      certidoes: 0,
+      matriculas: matriculas.length,
+      notas: notas.length,
+      certidoes: certidoes.length,
       webhooks: 0,
     }
   }
@@ -61,7 +72,17 @@ export default async function handler(req, res) {
       if (resource === 'integracoes') items = await listIntegracoes()
 
       if (userRole === 'aluno') {
-        items = filterAlunoItems(resource, items, userMatricula)
+        if (resource === 'dashboard') {
+          const [matriculas, notas, progresso, certidoes] = await Promise.all([
+            listMatriculas(),
+            listNotas(),
+            listProgresso(),
+            listCertidoes(),
+          ])
+          items = filterAlunoItems(resource, { matriculas, notas, progresso, certidoes }, userMatricula)
+        } else {
+          items = filterAlunoItems(resource, items, userMatricula)
+        }
       }
 
       return res.status(200).json({ items })

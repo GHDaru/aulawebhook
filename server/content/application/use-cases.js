@@ -50,6 +50,7 @@ function buildLessonHtml(lesson) {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; frame-src https://www.youtube.com https://player.vimeo.com; img-src 'self' data:; connect-src 'none'; script-src 'none';" />
     <title>${safeTitle}</title>
     <style>
       body { margin: 0; font-family: Inter, Arial, sans-serif; background: #f5fbf8; color: #123524; }
