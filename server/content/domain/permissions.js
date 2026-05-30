@@ -8,7 +8,7 @@ function validateProfessorIdentification(actor) {
 
 function ensureViewerActor(actor) {
   if (actor.userRole === 'aluno') {
-    throw new ForbiddenError('Alunos não podem visualizar a gestão de disciplinas.')
+    throw new ForbiddenError('Alunos não podem visualizar a gestão de cursos.')
   }
 
   validateProfessorIdentification(actor)

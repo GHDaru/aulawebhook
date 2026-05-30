@@ -258,34 +258,101 @@ textarea {
   gap: 8px;
 }
 
-.discipline-accordion-list {
-  display: grid;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.discipline-accordion {
-  border: 1px solid rgba(13, 98, 71, 0.18);
-  border-radius: 12px;
-  background: #fbfefc;
-  overflow: hidden;
-}
-
-.discipline-accordion summary {
-  cursor: pointer;
-  list-style: none;
-  padding: 12px 14px;
-}
-
-.discipline-accordion summary::-webkit-details-marker {
-  display: none;
-}
-
-.discipline-accordion-content {
-  border-top: 1px solid rgba(13, 98, 71, 0.14);
-  padding: 12px 14px 14px;
-  display: grid;
+.inline-actions {
+  display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+.matriculas-grid,
+.course-grid,
+.lessons-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.matriculas-grid,
+.course-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  margin-top: 12px;
+}
+
+.matricula-card,
+.course-card,
+.lesson-card {
+  border: 1px solid rgba(13, 98, 71, 0.14);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(242, 249, 245, 0.96));
+  box-shadow: 0 18px 34px rgba(12, 57, 42, 0.08);
+}
+
+.matricula-card,
+.lesson-card {
+  padding: 16px;
+}
+
+.matricula-card h3,
+.course-card h3,
+.lesson-card strong {
+  margin: 0;
+}
+
+.course-card {
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.course-card-header,
+.lesson-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.course-card-body {
+  display: grid;
+  gap: 12px;
+}
+
+.lessons-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.lesson-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #e4f3eb;
+  color: #0f513d;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.lesson-badge-video {
+  background: #efe6ff;
+  color: #5b2b94;
+}
+
+.lesson-card {
+  display: grid;
+  gap: 12px;
+}
+
+.lesson-card a {
+  color: #0d6247;
+  font-weight: 600;
+}
+
+.lesson-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .lesson-wrapper {
@@ -340,6 +407,11 @@ textarea {
   .kpi-grid {
     grid-template-columns: repeat(2, minmax(130px, 1fr));
   }
+
+  .course-card-header,
+  .lesson-card-header {
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 640px) {
@@ -350,6 +422,12 @@ textarea {
   .table {
     display: block;
     overflow-x: auto;
+  }
+
+  .matriculas-grid,
+  .course-grid,
+  .lessons-grid {
+    grid-template-columns: 1fr;
   }
 }
 

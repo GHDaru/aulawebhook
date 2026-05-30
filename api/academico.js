@@ -17,22 +17,54 @@ import { parseJsonBody } from '../server/shared/json.js'
 
 const ALLOWED_GET = new Set(['dashboard', 'alunos', 'matriculas', 'notas', 'progresso', 'certidoes', 'integracoes'])
 
+function firstHeaderValue(value) {
+  return Array.isArray(value) ? value[0] : value
+}
+
+function filterAlunoItems(resource, items, matricula) {
+  if (!matricula) return []
+  if (resource === 'matriculas' || resource === 'notas' || resource === 'progresso' || resource === 'certidoes') {
+    return items.filter((item) => item.aluno_matricula === matricula)
+  }
+  if (resource === 'dashboard') {
+    return {
+      disciplinas: 0,
+      aulas: 0,
+      alunos: 0,
+      matriculas: 0,
+      notas: 0,
+      certidoes: 0,
+      webhooks: 0,
+    }
+  }
+  return []
+}
+
 export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       const resource = typeof req.query.resource === 'string' ? req.query.resource : ''
+      const userRole = String(firstHeaderValue(req.headers['x-user-role']) || '').trim()
+      const userMatricula = String(firstHeaderValue(req.headers['x-user-matricula']) || '').trim()
 
       if (!ALLOWED_GET.has(resource)) {
         return res.status(400).json({ error: 'Recurso inválido.' })
       }
 
-      if (resource === 'dashboard') return res.status(200).json({ items: await listDashboard() })
-      if (resource === 'alunos') return res.status(200).json({ items: await listAlunos() })
-      if (resource === 'matriculas') return res.status(200).json({ items: await listMatriculas() })
-      if (resource === 'notas') return res.status(200).json({ items: await listNotas() })
-      if (resource === 'progresso') return res.status(200).json({ items: await listProgresso() })
-      if (resource === 'certidoes') return res.status(200).json({ items: await listCertidoes() })
-      if (resource === 'integracoes') return res.status(200).json({ items: await listIntegracoes() })
+      let items = null
+      if (resource === 'dashboard') items = await listDashboard()
+      if (resource === 'alunos') items = await listAlunos()
+      if (resource === 'matriculas') items = await listMatriculas()
+      if (resource === 'notas') items = await listNotas()
+      if (resource === 'progresso') items = await listProgresso()
+      if (resource === 'certidoes') items = await listCertidoes()
+      if (resource === 'integracoes') items = await listIntegracoes()
+
+      if (userRole === 'aluno') {
+        items = filterAlunoItems(resource, items, userMatricula)
+      }
+
+      return res.status(200).json({ items })
     }
 
     if (req.method === 'POST') {

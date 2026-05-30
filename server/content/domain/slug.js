@@ -1,5 +1,5 @@
 const MAX_SLUG_ATTEMPTS = 100
-const DEFAULT_DISCIPLINE_SLUG = 'disciplina'
+const DEFAULT_DISCIPLINE_SLUG = 'curso'
 const DEFAULT_LESSON_SLUG = 'aula'
 
 function normalizeBaseName(filename) {

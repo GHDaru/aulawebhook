@@ -1,6 +1,7 @@
 import { ValidationError } from './errors.js'
 
 const MAX_HTML_SIZE_BYTES = 1_500_000
+const VALID_LESSON_TYPES = new Set(['html', 'video'])
 
 function formatLessonTitle(slug) {
   return slug
@@ -27,6 +28,12 @@ function validateHtmlContent(html) {
   }
 }
 
+function validateLessonType(type) {
+  if (!VALID_LESSON_TYPES.has(type)) {
+    throw new ValidationError('Tipo de conteúdo inválido.')
+  }
+}
+
 function validateLessonFilename(filename) {
   const fileName = typeof filename === 'string' ? filename.toLowerCase() : ''
   if (fileName && !fileName.endsWith('.html')) {
@@ -34,16 +41,38 @@ function validateLessonFilename(filename) {
   }
 }
 
-function createLesson({ id, disciplineId, disciplineTitle, html, order = null, title }) {
+function validateVideoUrl(videoUrl) {
+  try {
+    const parsedUrl = new URL(String(videoUrl || ''))
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      throw new ValidationError('Informe um link de vídeo válido.')
+    }
+  } catch {
+    throw new ValidationError('Informe um link de vídeo válido.')
+  }
+}
+
+function createLesson({ id, disciplineId, disciplineTitle, html = '', lessonType = 'html', order = null, title, videoUrl = null }) {
   return {
     id,
     slug: id,
     disciplineId,
     disciplineTitle,
     html,
+    lessonType,
     order,
     title,
+    videoUrl,
   }
 }
 
-export { MAX_HTML_SIZE_BYTES, createLesson, formatLessonTitle, validateHtmlContent, validateLessonFilename }
+export {
+  MAX_HTML_SIZE_BYTES,
+  VALID_LESSON_TYPES,
+  createLesson,
+  formatLessonTitle,
+  validateHtmlContent,
+  validateLessonFilename,
+  validateLessonType,
+  validateVideoUrl,
+}

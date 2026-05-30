@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     const { alunoId, disciplinaId } = await findLatestAlunoAndDisciplinaIds()
 
     if (!alunoId || !disciplinaId) {
-      return res.status(400).json({ error: 'Cadastre ao menos um aluno e uma disciplina para simular webhook.' })
+      return res.status(400).json({ error: 'Cadastre ao menos um aluno e um curso para simular webhook.' })
     }
 
     const payload = {

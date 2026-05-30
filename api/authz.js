@@ -37,7 +37,7 @@ function validateManagerActor(actor, message) {
 
 function validateDisciplineViewer(actor) {
   if (actor.userRole === 'aluno') {
-    return { status: 403, error: 'Alunos não podem visualizar a gestão de disciplinas.' }
+    return { status: 403, error: 'Alunos não podem visualizar a gestão de cursos.' }
   }
 
   return validateProfessorActor(actor)
