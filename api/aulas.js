@@ -13,7 +13,7 @@ async function listPublishedDisciplines(req, res) {
 
     return res.status(200).json(payload)
   } catch (error) {
-    const failure = formatContentError(error, 'Erro ao listar disciplinas publicadas.')
+    const failure = formatContentError(error, 'Erro ao listar cursos publicados.')
     return res.status(failure.status).json(failure.body)
   }
 }
@@ -29,7 +29,7 @@ async function createManagedDiscipline(req, res) {
 
     return res.status(201).json(discipline)
   } catch (error) {
-    const failure = formatContentError(error, 'Erro ao cadastrar disciplina.')
+    const failure = formatContentError(error, 'Erro ao cadastrar curso.')
     return res.status(failure.status).json(failure.body)
   }
 }

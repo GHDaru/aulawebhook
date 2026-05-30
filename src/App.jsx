@@ -9,7 +9,7 @@ const DATE_FORMATTER = new Intl.DateTimeFormat('pt-BR', {
 
 const MENU_ITEMS = [
   { key: 'dashboard', label: 'Dashboard' },
-  { key: 'disciplinas', label: 'Disciplinas' },
+  { key: 'disciplinas', label: 'Cursos' },
   { key: 'alunos', label: 'Alunos' },
   { key: 'matriculas', label: 'Matrículas' },
   { key: 'notas', label: 'Notas' },
@@ -218,7 +218,7 @@ function StudentView({ disciplineId, lessonId }) {
       {metadata && (
         <header className="lesson-nav">
           <div>
-            <strong>{metadata.discipline.title}</strong>
+            <strong>{metadata.course.title}</strong>
             <p className="portal-meta">
               {metadata.lesson.title} ({metadata.navigation.index}/{metadata.navigation.total})
             </p>
@@ -299,6 +299,16 @@ function PortalView({ user, onLogout }) {
   const [selectedDiscipline, setSelectedDiscipline] = useState('')
   const [lessonTitle, setLessonTitle] = useState('')
   const [lessonFile, setLessonFile] = useState(null)
+  const [lessonType, setLessonType] = useState('html')
+  const [lessonHtmlContent, setLessonHtmlContent] = useState('')
+  const [lessonVideoUrl, setLessonVideoUrl] = useState('')
+  const [editingLessonId, setEditingLessonId] = useState('')
+  const [editingCourseId, setEditingCourseId] = useState('')
+  const [editingLessonTitle, setEditingLessonTitle] = useState('')
+  const [editingLessonType, setEditingLessonType] = useState('html')
+  const [editingLessonHtml, setEditingLessonHtml] = useState('')
+  const [editingLessonVideoUrl, setEditingLessonVideoUrl] = useState('')
+  const [loadingLessonEditor, setLoadingLessonEditor] = useState(false)
 
   const [alunoNome, setAlunoNome] = useState('')
   const [alunoMatricula, setAlunoMatricula] = useState('')
@@ -326,7 +336,7 @@ function PortalView({ user, onLogout }) {
 
   const visibleMenu = useMemo(() => {
     if (user.role === 'aluno') {
-      return MENU_ITEMS.filter((item) => ['dashboard', 'progresso', 'certidoes'].includes(item.key))
+      return MENU_ITEMS.filter((item) => ['dashboard', 'matriculas', 'progresso', 'certidoes'].includes(item.key))
     }
 
     if (user.role === 'professor') {
@@ -378,8 +388,23 @@ function PortalView({ user, onLogout }) {
     )
   }, [alunos, quickStudentSearch])
 
-  const loadResource = useCallback(async (resource) => {
-    const response = await fetch(`/api/academico?resource=${encodeURIComponent(resource)}`)
+  const visibleMatriculas = useMemo(() => {
+    if (user.role !== 'aluno') return matriculas
+    return matriculas.filter((item) => item.aluno_matricula === user.matricula)
+  }, [matriculas, user.matricula, user.role])
+
+  const visibleProgresso = useMemo(() => {
+    if (user.role !== 'aluno') return progresso
+    return progresso.filter((item) => item.aluno_matricula === user.matricula)
+  }, [progresso, user.matricula, user.role])
+
+  const visibleCertidoes = useMemo(() => {
+    if (user.role !== 'aluno') return certidoes
+    return certidoes.filter((item) => item.aluno_matricula === user.matricula)
+  }, [certidoes, user.matricula, user.role])
+
+  const loadResource = useCallback(async (resource, headers) => {
+    const response = await fetch(`/api/academico?resource=${encodeURIComponent(resource)}`, { headers })
     const payload = await parseResponse(response)
     return payload.items
   }, [])
@@ -387,11 +412,13 @@ function PortalView({ user, onLogout }) {
   const authHeaders = useMemo(() => {
     const userId = typeof user.id === 'string' ? user.id : ''
     const userRole = typeof user.role === 'string' ? user.role : ''
+    const userMatricula = typeof user.matricula === 'string' ? user.matricula : ''
     const headers = { 'Content-Type': 'application/json' }
     if (userId) headers['x-user-id'] = userId
     if (userRole) headers['x-user-role'] = userRole
+    if (userMatricula) headers['x-user-matricula'] = userMatricula
     return headers
-  }, [user.id, user.role])
+  }, [user.id, user.matricula, user.role])
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -399,18 +426,18 @@ function PortalView({ user, onLogout }) {
 
     try {
       const [dashboardItems, disciplinasPayload, alunosItems, matriculasItems, notasItems, progressoItems, certidoesItems, integracoesItems] = await Promise.all([
-        loadResource('dashboard'),
+        loadResource('dashboard', authHeaders),
         fetch('/api/aulas', { headers: authHeaders }).then(parseResponse),
-        loadResource('alunos'),
-        loadResource('matriculas'),
-        loadResource('notas'),
-        loadResource('progresso'),
-        loadResource('certidoes'),
-        loadResource('integracoes'),
+        loadResource('alunos', authHeaders),
+        loadResource('matriculas', authHeaders),
+        loadResource('notas', authHeaders),
+        loadResource('progresso', authHeaders),
+        loadResource('certidoes', authHeaders),
+        loadResource('integracoes', authHeaders),
       ])
 
       setDashboard(dashboardItems)
-      setDisciplines(disciplinasPayload.lessons || [])
+      setDisciplines(disciplinasPayload.courses || [])
       setAlunos(alunosItems || [])
       setMatriculas(matriculasItems || [])
       setNotas(notasItems || [])
@@ -458,26 +485,150 @@ function PortalView({ user, onLogout }) {
     }, 'disciplinas')
   }
 
+  const resetLessonForm = useCallback(() => {
+    setLessonTitle('')
+    setLessonFile(null)
+    setLessonHtmlContent('')
+    setLessonVideoUrl('')
+    setLessonType('html')
+  }, [])
+
+  const resetLessonEditor = useCallback(() => {
+    setEditingCourseId('')
+    setEditingLessonId('')
+    setEditingLessonTitle('')
+    setEditingLessonType('html')
+    setEditingLessonHtml('')
+    setEditingLessonVideoUrl('')
+  }, [])
+
   const handleUploadLesson = (event) => {
     event.preventDefault()
 
     runAction(async () => {
-      if (!lessonFile || !selectedDiscipline) {
-        throw new Error('Selecione disciplina e arquivo HTML.')
+      if (!selectedDiscipline) {
+        throw new Error('Selecione um curso.')
       }
-      const html = await lessonFile.text()
+      if (lessonType === 'html' && !lessonFile && !lessonHtmlContent.trim()) {
+        throw new Error('Informe o HTML da aula ou envie um arquivo.')
+      }
+      if (lessonType === 'video' && !lessonVideoUrl.trim()) {
+        throw new Error('Informe a URL do vídeo da aula.')
+      }
+      const html = lessonType === 'html'
+        ? (lessonFile ? await lessonFile.text() : lessonHtmlContent)
+        : ''
       const response = await fetch(`/api/aulas/${selectedDiscipline}`, {
         method: 'POST',
         headers: authHeaders,
         body: JSON.stringify({
-          filename: lessonFile.name,
+          filename: lessonFile?.name,
           html,
           title: lessonTitle || undefined,
+          lessonType,
+          videoUrl: lessonType === 'video' ? lessonVideoUrl : undefined,
         }),
       })
       await parseResponse(response)
-      setLessonTitle('')
-      setLessonFile(null)
+      resetLessonForm()
+    }, 'disciplinas')
+  }
+
+  const handleEditLesson = async (courseId, lessonId) => {
+    setLoadingLessonEditor(true)
+    setError('')
+
+    try {
+      const response = await fetch(`/api/aulas/${courseId}?lesson=${encodeURIComponent(lessonId)}`, { headers: authHeaders })
+      const payload = await parseResponse(response)
+      setEditingCourseId(courseId)
+      setEditingLessonId(lessonId)
+      setEditingLessonTitle(payload.lesson.title || '')
+      setEditingLessonType(payload.lesson.lessonType || 'html')
+      setEditingLessonHtml(payload.lesson.lessonType === 'html' ? payload.html : '')
+      setEditingLessonVideoUrl(payload.lesson.videoUrl || '')
+      setSelectedDiscipline(courseId)
+    } catch (actionError) {
+      setError(actionError.message || 'Falha ao carregar a aula.')
+    } finally {
+      setLoadingLessonEditor(false)
+    }
+  }
+
+  const handleUpdateLesson = (event) => {
+    event.preventDefault()
+
+    runAction(async () => {
+      if (!editingCourseId || !editingLessonId) {
+        throw new Error('Selecione a aula que será atualizada.')
+      }
+      if (editingLessonType === 'html' && !editingLessonHtml.trim()) {
+        throw new Error('Informe o HTML atualizado da aula.')
+      }
+      if (editingLessonType === 'video' && !editingLessonVideoUrl.trim()) {
+        throw new Error('Informe a URL do vídeo da aula.')
+      }
+
+      const response = await fetch(`/api/aulas/${editingCourseId}?lesson=${encodeURIComponent(editingLessonId)}`, {
+        method: 'PUT',
+        headers: authHeaders,
+        body: JSON.stringify({
+          title: editingLessonTitle,
+          html: editingLessonType === 'html' ? editingLessonHtml : '',
+          lessonType: editingLessonType,
+          videoUrl: editingLessonType === 'video' ? editingLessonVideoUrl : undefined,
+        }),
+      })
+      await parseResponse(response)
+      resetLessonEditor()
+    }, 'disciplinas')
+  }
+
+  const handleDeleteLesson = (courseId, lessonId) => {
+    if (!window.confirm('Deseja excluir esta aula?')) {
+      return
+    }
+
+    runAction(async () => {
+      const response = await fetch(`/api/aulas/${courseId}?lesson=${encodeURIComponent(lessonId)}`, {
+        method: 'DELETE',
+        headers: authHeaders,
+      })
+      await parseResponse(response)
+      if (editingLessonId === lessonId) {
+        resetLessonEditor()
+      }
+    }, 'disciplinas')
+  }
+
+  const handleMoveLesson = (courseId, lessonId, direction) => {
+    runAction(async () => {
+      const response = await fetch(`/api/aulas/${courseId}?lesson=${encodeURIComponent(lessonId)}`, {
+        method: 'PATCH',
+        headers: authHeaders,
+        body: JSON.stringify({ direction }),
+      })
+      await parseResponse(response)
+    }, 'disciplinas')
+  }
+
+  const handleDeleteDiscipline = (courseId) => {
+    if (!window.confirm('Deseja excluir este curso e todas as aulas?')) {
+      return
+    }
+
+    runAction(async () => {
+      const response = await fetch(`/api/aulas/${courseId}`, {
+        method: 'DELETE',
+        headers: authHeaders,
+      })
+      await parseResponse(response)
+      if (selectedDiscipline === courseId) {
+        setSelectedDiscipline('')
+      }
+      if (editingCourseId === courseId) {
+        resetLessonEditor()
+      }
     }, 'disciplinas')
   }
 
@@ -604,7 +755,7 @@ function PortalView({ user, onLogout }) {
       'CERTIDÃO DE CONCLUSÃO',
       `Aluno: ${item.aluno_nome}`,
       `Matrícula: ${item.aluno_matricula}`,
-      `Disciplina: ${item.disciplina_title}`,
+      `Curso: ${item.disciplina_title}`,
       `Média: ${item.media}`,
       `Progresso: ${item.progresso}%`,
       `Status: ${item.status}`,
@@ -652,23 +803,25 @@ function PortalView({ user, onLogout }) {
         <header className="topbar card">
           <div>
             <h1>{sectionTitle}</h1>
-            <p className="subtitle">Gestão acadêmica com fluxo consolidado por disciplina.</p>
+            <p className="subtitle">Gestão acadêmica com fluxo consolidado por curso.</p>
           </div>
 
-          <div className="quick-actions">
-            <input
-              type="text"
-              placeholder="Buscar aluno por nome/matrícula"
-              value={quickStudentSearch}
-              onChange={(event) => setQuickStudentSearch(event.target.value)}
-            />
-            <button className="btn btn-secondary" type="button" onClick={() => setActiveModule('disciplinas')}>
-              Criar disciplina
-            </button>
-            <button className="btn btn-secondary" type="button" onClick={() => setActiveModule('notas')}>
-              Lançar nota
-            </button>
-          </div>
+          {user.role !== 'aluno' && (
+            <div className="quick-actions">
+              <input
+                type="text"
+                placeholder="Buscar aluno por nome/matrícula"
+                value={quickStudentSearch}
+                onChange={(event) => setQuickStudentSearch(event.target.value)}
+              />
+              <button className="btn btn-secondary" type="button" onClick={() => setActiveModule('disciplinas')}>
+                Criar curso
+              </button>
+              <button className="btn btn-secondary" type="button" onClick={() => setActiveModule('notas')}>
+                Lançar nota
+              </button>
+            </div>
+          )}
         </header>
 
         {error && <p className="error">{error}</p>}
@@ -680,56 +833,83 @@ function PortalView({ user, onLogout }) {
             <UseCasePanel moduleKey={activeModule} />
             {activeModule === 'dashboard' && (
               <section className="card">
-                <div className="kpi-grid">
-                  <article className="kpi-card"><span>Disciplinas</span><strong>{dashboard.disciplinas || 0}</strong></article>
-                  <article className="kpi-card"><span>Aulas</span><strong>{dashboard.aulas || 0}</strong></article>
-                  <article className="kpi-card"><span>Alunos</span><strong>{dashboard.alunos || 0}</strong></article>
-                  <article className="kpi-card"><span>Matrículas</span><strong>{dashboard.matriculas || 0}</strong></article>
-                  <article className="kpi-card"><span>Notas</span><strong>{dashboard.notas || 0}</strong></article>
-                  <article className="kpi-card"><span>Certidões</span><strong>{dashboard.certidoes || 0}</strong></article>
-                </div>
+                {user.role === 'aluno' ? (
+                  <>
+                    <div className="kpi-grid">
+                      <article className="kpi-card"><span>Matrículas ativas</span><strong>{visibleMatriculas.length}</strong></article>
+                      <article className="kpi-card"><span>Progresso lançado</span><strong>{visibleProgresso.length}</strong></article>
+                      <article className="kpi-card"><span>Certidões</span><strong>{visibleCertidoes.length}</strong></article>
+                    </div>
 
-                <h2>Visão consolidada da disciplina</h2>
-                {consolidatedByDiscipline.length === 0 ? (
-                  <p className="helper-text">Sem dados consolidados no momento.</p>
+                    <h2>Meus cursos</h2>
+                    {visibleMatriculas.length === 0 ? (
+                      <p className="helper-text">Você ainda não possui matrículas visíveis.</p>
+                    ) : (
+                      <div className="matriculas-grid">
+                        {visibleMatriculas.map((item) => (
+                          <article key={item.id} className="matricula-card">
+                            <span className="eyebrow">Curso</span>
+                            <h3>{item.disciplina_title}</h3>
+                            <p className="portal-meta">Status da matrícula: {item.status}</p>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 ) : (
-                  <table className="table">
-                    <thead>
-                      <tr>
-                        <th>Disciplina</th>
-                        <th>Média de notas</th>
-                        <th>Média de progresso</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {consolidatedByDiscipline.map((item) => (
-                        <tr key={item.disciplina}>
-                          <td>{item.disciplina}</td>
-                          <td>{item.mediaNotas}</td>
-                          <td>{item.mediaProgresso}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
+                  <>
+                    <div className="kpi-grid">
+                      <article className="kpi-card"><span>Cursos</span><strong>{dashboard.cursos || 0}</strong></article>
+                      <article className="kpi-card"><span>Aulas</span><strong>{dashboard.aulas || 0}</strong></article>
+                      <article className="kpi-card"><span>Alunos</span><strong>{dashboard.alunos || 0}</strong></article>
+                      <article className="kpi-card"><span>Matrículas</span><strong>{dashboard.matriculas || 0}</strong></article>
+                      <article className="kpi-card"><span>Notas</span><strong>{dashboard.notas || 0}</strong></article>
+                      <article className="kpi-card"><span>Certidões</span><strong>{dashboard.certidoes || 0}</strong></article>
+                    </div>
 
-                <h2>Busca rápida de aluno</h2>
-                <ul className="list-simple">
-                  {filteredStudents.slice(0, 10).map((aluno) => (
-                    <li key={aluno.id}>{aluno.nome} · {aluno.matricula}</li>
-                  ))}
-                  {filteredStudents.length === 0 && <li>Nenhum aluno encontrado.</li>}
-                </ul>
+                    <h2>Visão consolidada do curso</h2>
+                    {consolidatedByDiscipline.length === 0 ? (
+                      <p className="helper-text">Sem dados consolidados no momento.</p>
+                    ) : (
+                      <table className="table">
+                        <thead>
+                          <tr>
+                            <th>Curso</th>
+                            <th>Média de notas</th>
+                            <th>Média de progresso</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {consolidatedByDiscipline.map((item) => (
+                            <tr key={item.disciplina}>
+                              <td>{item.disciplina}</td>
+                              <td>{item.mediaNotas}</td>
+                              <td>{item.mediaProgresso}%</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+
+                    <h2>Busca rápida de aluno</h2>
+                    <ul className="list-simple">
+                      {filteredStudents.slice(0, 10).map((aluno) => (
+                        <li key={aluno.id}>{aluno.nome} · {aluno.matricula}</li>
+                      ))}
+                      {filteredStudents.length === 0 && <li>Nenhum aluno encontrado.</li>}
+                    </ul>
+                  </>
+                )}
               </section>
             )}
 
             {activeModule === 'disciplinas' && (
               <section className="card">
-                <h2>Cadastrar disciplina</h2>
+                <h2>Cadastrar curso</h2>
                 <form className="form-grid" onSubmit={handleCreateDiscipline}>
                   <input
                     type="text"
-                    placeholder="Nome da disciplina"
+                    placeholder="Nome do curso"
                     value={disciplineTitle}
                     onChange={(event) => setDisciplineTitle(event.target.value)}
                     required
@@ -737,44 +917,133 @@ function PortalView({ user, onLogout }) {
                   <button className="btn" type="submit">Cadastrar</button>
                 </form>
 
-                <h2>Incluir aula em disciplina</h2>
+                <h2>Incluir aula no curso</h2>
                 <form className="form-grid" onSubmit={handleUploadLesson}>
                   <select
                     value={selectedDiscipline}
                     onChange={(event) => setSelectedDiscipline(event.target.value)}
                     required
                   >
-                    <option value="">Selecione disciplina</option>
+                    <option value="">Selecione curso</option>
                     {disciplines.map((discipline) => (
                       <option key={discipline.id} value={discipline.id}>{discipline.title}</option>
                     ))}
+                  </select>
+                  <select value={lessonType} onChange={(event) => setLessonType(event.target.value)}>
+                    <option value="html">Recurso HTML</option>
+                    <option value="video">Link de vídeo</option>
                   </select>
                   <input
                     type="text"
                     placeholder="Título da aula"
                     value={lessonTitle}
                     onChange={(event) => setLessonTitle(event.target.value)}
-                  />
-                  <input
-                    type="file"
-                    accept=".html,text/html"
-                    onChange={(event) => setLessonFile(event.target.files?.[0] ?? null)}
                     required
                   />
+                  {lessonType === 'html' ? (
+                    <>
+                      <input
+                        type="file"
+                        accept=".html,text/html"
+                        onChange={(event) => setLessonFile(event.target.files?.[0] ?? null)}
+                      />
+                      <textarea
+                        rows={6}
+                        placeholder="Cole o HTML aqui caso não queira enviar arquivo"
+                        value={lessonHtmlContent}
+                        onChange={(event) => setLessonHtmlContent(event.target.value)}
+                      />
+                    </>
+                  ) : (
+                    <input
+                      type="url"
+                      placeholder="https://youtube.com/watch?v=..."
+                      aria-label="URL do vídeo (YouTube ou Vimeo)"
+                      value={lessonVideoUrl}
+                      onChange={(event) => setLessonVideoUrl(event.target.value)}
+                      required
+                    />
+                  )}
                   <button className="btn" type="submit">Publicar aula</button>
                 </form>
 
-                <h2>Disciplinas ativas</h2>
-                {disciplines.length === 0 ? (
-                  <p className="helper-text">Nenhuma disciplina disponível para o seu perfil.</p>
+                <h2>Atualizar conteúdo educacional</h2>
+                {editingLessonId ? (
+                  <form className="form-grid" onSubmit={handleUpdateLesson}>
+                    <input
+                      type="text"
+                      placeholder="Título da aula"
+                      value={editingLessonTitle}
+                      onChange={(event) => setEditingLessonTitle(event.target.value)}
+                      required
+                    />
+                    <select value={editingLessonType} onChange={(event) => setEditingLessonType(event.target.value)}>
+                      <option value="html">Recurso HTML</option>
+                      <option value="video">Link de vídeo</option>
+                    </select>
+                    {editingLessonType === 'html' ? (
+                      <textarea
+                        rows={8}
+                        placeholder="Atualize o HTML da aula"
+                        value={editingLessonHtml}
+                        onChange={(event) => setEditingLessonHtml(event.target.value)}
+                        required
+                      />
+                    ) : (
+                      <input
+                        type="url"
+                        placeholder="https://youtube.com/watch?v=..."
+                        aria-label="URL do vídeo (YouTube ou Vimeo)"
+                        value={editingLessonVideoUrl}
+                        onChange={(event) => setEditingLessonVideoUrl(event.target.value)}
+                        required
+                      />
+                    )}
+                    <div className="inline-actions">
+                      <button className="btn" type="submit">Salvar alterações</button>
+                      <button className="btn btn-secondary" type="button" onClick={resetLessonEditor}>
+                        Cancelar edição
+                      </button>
+                    </div>
+                  </form>
                 ) : (
-                  <div className="discipline-accordion-list">
+                  <p className="helper-text">
+                    Selecione uma aula abaixo para editar HTML, trocar vídeo, remover ou reorganizar.
+                  </p>
+                )}
+                {loadingLessonEditor && <p className="helper-text">Carregando aula para edição...</p>}
+
+                <h2>Cursos ativos</h2>
+                {disciplines.length === 0 ? (
+                  <p className="helper-text">Nenhum curso disponível para o seu perfil.</p>
+                ) : (
+                  <div className="course-grid">
                     {disciplines.map((discipline) => (
-                      <details key={discipline.id} className="discipline-accordion">
-                        <summary>
-                          <strong>{discipline.title}</strong> ({discipline.lessons.length} aulas)
-                        </summary>
-                        <div className="discipline-accordion-content">
+                      <article key={discipline.id} className="course-card">
+                        <div className="course-card-header">
+                          <div>
+                            <span className="eyebrow">Curso</span>
+                            <h3>{discipline.title}</h3>
+                            <p className="portal-meta">{discipline.lessons.length} aulas publicadas</p>
+                          </div>
+                          <div className="inline-actions">
+                            <button
+                              className="btn btn-secondary"
+                              type="button"
+                              onClick={() => setSelectedDiscipline(discipline.id)}
+                            >
+                              Nova aula
+                            </button>
+                            <button
+                              className="btn btn-secondary"
+                              type="button"
+                              onClick={() => handleDeleteDiscipline(discipline.id)}
+                            >
+                              Excluir curso
+                            </button>
+                          </div>
+                        </div>
+                        <div className="course-card-body">
                           <button
                             className="btn btn-secondary"
                             type="button"
@@ -783,19 +1052,50 @@ function PortalView({ user, onLogout }) {
                             Selecionar para publicar aula
                           </button>
                           {discipline.lessons.length > 0 ? (
-                            <ul className="list-simple">
-                              {discipline.lessons.map((lesson) => (
-                                <li key={lesson.id}>
-                                  {lesson.order}.{' '}
-                                  <a href={lesson.studentUrl} target="_blank" rel="noreferrer">{lesson.title}</a>
-                                </li>
+                            <div className="lessons-grid">
+                              {discipline.lessons.map((lesson, index) => (
+                                <article key={lesson.id} className="lesson-card">
+                                  <div className="lesson-card-header">
+                                    <span className={`lesson-badge ${lesson.lessonType === 'video' ? 'lesson-badge-video' : ''}`}>
+                                      {lesson.lessonType === 'video' ? 'Vídeo' : 'HTML'}
+                                    </span>
+                                    <strong>{lesson.order}. {lesson.title}</strong>
+                                  </div>
+                                  <a href={lesson.studentUrl} target="_blank" rel="noreferrer">Abrir experiência do aluno</a>
+                                  <div className="lesson-card-actions">
+                                    <button className="btn btn-secondary" type="button" onClick={() => handleEditLesson(discipline.id, lesson.id)}>
+                                      Editar
+                                    </button>
+                                    <button className="btn btn-secondary" type="button" onClick={() => handleDeleteLesson(discipline.id, lesson.id)}>
+                                      Excluir
+                                    </button>
+                                    <button
+                                      className="btn btn-secondary"
+                                      type="button"
+                                      aria-label="Mover aula para cima"
+                                      onClick={() => handleMoveLesson(discipline.id, lesson.id, 'up')}
+                                      disabled={index === 0}
+                                    >
+                                      ↑
+                                    </button>
+                                    <button
+                                      className="btn btn-secondary"
+                                      type="button"
+                                      aria-label="Mover aula para baixo"
+                                      onClick={() => handleMoveLesson(discipline.id, lesson.id, 'down')}
+                                      disabled={index === discipline.lessons.length - 1}
+                                    >
+                                      ↓
+                                    </button>
+                                  </div>
+                                </article>
                               ))}
-                            </ul>
+                            </div>
                           ) : (
-                            <p className="helper-text">Sem aulas cadastradas nesta disciplina.</p>
+                            <p className="helper-text">Sem aulas cadastradas neste curso.</p>
                           )}
                         </div>
-                      </details>
+                      </article>
                     ))}
                   </div>
                 )}
@@ -838,28 +1138,42 @@ function PortalView({ user, onLogout }) {
 
             {activeModule === 'matriculas' && (
               <section className="card">
-                <h2>Vincular aluno à disciplina</h2>
-                <form className="form-grid" onSubmit={handleCreateMatricula}>
-                  <select value={matriculaAlunoId} onChange={(event) => setMatriculaAlunoId(event.target.value)} required>
-                    <option value="">Selecione aluno</option>
-                    {alunos.map((aluno) => (
-                      <option key={aluno.id} value={aluno.id}>{aluno.nome} · {aluno.matricula}</option>
-                    ))}
-                  </select>
-                  <select value={matriculaDisciplinaId} onChange={(event) => setMatriculaDisciplinaId(event.target.value)} required>
-                    <option value="">Selecione disciplina</option>
-                    {disciplines.map((discipline) => (
-                      <option key={discipline.id} value={discipline.id}>{discipline.title}</option>
-                    ))}
-                  </select>
-                  <button className="btn" type="submit">Matricular</button>
-                </form>
+                {user.role !== 'aluno' && (
+                  <>
+                    <h2>Vincular aluno ao curso</h2>
+                    <form className="form-grid" onSubmit={handleCreateMatricula}>
+                      <select value={matriculaAlunoId} onChange={(event) => setMatriculaAlunoId(event.target.value)} required>
+                        <option value="">Selecione aluno</option>
+                        {alunos.map((aluno) => (
+                          <option key={aluno.id} value={aluno.id}>{aluno.nome} · {aluno.matricula}</option>
+                        ))}
+                      </select>
+                      <select value={matriculaDisciplinaId} onChange={(event) => setMatriculaDisciplinaId(event.target.value)} required>
+                        <option value="">Selecione curso</option>
+                        {disciplines.map((discipline) => (
+                          <option key={discipline.id} value={discipline.id}>{discipline.title}</option>
+                        ))}
+                      </select>
+                      <button className="btn" type="submit">Matricular</button>
+                    </form>
+                  </>
+                )}
 
-                <ul className="list-simple">
-                  {matriculas.map((item) => (
-                    <li key={item.id}>{item.aluno_nome} → {item.disciplina_title} ({item.status})</li>
-                  ))}
-                </ul>
+                <h2>{user.role === 'aluno' ? 'Minhas matrículas' : 'Matrículas ativas'}</h2>
+                {visibleMatriculas.length === 0 ? (
+                  <p className="helper-text">Nenhuma matrícula encontrada.</p>
+                ) : (
+                  <div className="matriculas-grid">
+                    {visibleMatriculas.map((item) => (
+                      <article key={item.id} className="matricula-card">
+                        <span className="eyebrow">{item.status}</span>
+                        <h3>{item.disciplina_title}</h3>
+                        <p>{item.aluno_nome}</p>
+                        <p className="portal-meta">Matrícula acadêmica: {item.aluno_matricula}</p>
+                      </article>
+                    ))}
+                  </div>
+                )}
               </section>
             )}
 
@@ -872,7 +1186,7 @@ function PortalView({ user, onLogout }) {
                     {alunos.map((aluno) => <option key={aluno.id} value={aluno.id}>{aluno.nome}</option>)}
                   </select>
                   <select value={notaDisciplinaId} onChange={(event) => setNotaDisciplinaId(event.target.value)} required>
-                    <option value="">Disciplina</option>
+                    <option value="">Curso</option>
                     {disciplines.map((discipline) => <option key={discipline.id} value={discipline.id}>{discipline.title}</option>)}
                   </select>
                   <input type="text" placeholder="Avaliação" value={avaliacao} onChange={(event) => setAvaliacao(event.target.value)} required />
@@ -891,7 +1205,7 @@ function PortalView({ user, onLogout }) {
                 </form>
 
                 <table className="table">
-                  <thead><tr><th>Aluno</th><th>Disciplina</th><th>Avaliação</th><th>Nota</th></tr></thead>
+                  <thead><tr><th>Aluno</th><th>Curso</th><th>Avaliação</th><th>Nota</th></tr></thead>
                   <tbody>
                     {notas.map((item) => (
                       <tr key={item.id}><td>{item.aluno_nome}</td><td>{item.disciplina_title}</td><td>{item.avaliacao}</td><td>{item.nota}</td></tr>
@@ -904,24 +1218,26 @@ function PortalView({ user, onLogout }) {
             {activeModule === 'progresso' && (
               <section className="card">
                 <h2>Progresso por aluno</h2>
-                <form className="form-grid" onSubmit={handleUpdateProgress}>
-                  <select value={progAlunoId} onChange={(event) => setProgAlunoId(event.target.value)} required>
-                    <option value="">Aluno</option>
-                    {alunos.map((aluno) => <option key={aluno.id} value={aluno.id}>{aluno.nome}</option>)}
-                  </select>
-                  <select value={progDisciplinaId} onChange={(event) => setProgDisciplinaId(event.target.value)} required>
-                    <option value="">Disciplina</option>
-                    {disciplines.map((discipline) => <option key={discipline.id} value={discipline.id}>{discipline.title}</option>)}
-                  </select>
-                  <input type="number" min="0" placeholder="Aulas concluídas" value={progConcluido} onChange={(event) => setProgConcluido(event.target.value)} required />
-                  <input type="number" min="0" placeholder="Total de aulas" value={progTotal} onChange={(event) => setProgTotal(event.target.value)} required />
-                  <button className="btn" type="submit">Atualizar progresso</button>
-                </form>
+                {user.role !== 'aluno' && (
+                  <form className="form-grid" onSubmit={handleUpdateProgress}>
+                    <select value={progAlunoId} onChange={(event) => setProgAlunoId(event.target.value)} required>
+                      <option value="">Aluno</option>
+                      {alunos.map((aluno) => <option key={aluno.id} value={aluno.id}>{aluno.nome}</option>)}
+                    </select>
+                    <select value={progDisciplinaId} onChange={(event) => setProgDisciplinaId(event.target.value)} required>
+                      <option value="">Curso</option>
+                      {disciplines.map((discipline) => <option key={discipline.id} value={discipline.id}>{discipline.title}</option>)}
+                    </select>
+                    <input type="number" min="0" placeholder="Aulas concluídas" value={progConcluido} onChange={(event) => setProgConcluido(event.target.value)} required />
+                    <input type="number" min="0" placeholder="Total de aulas" value={progTotal} onChange={(event) => setProgTotal(event.target.value)} required />
+                    <button className="btn" type="submit">Atualizar progresso</button>
+                  </form>
+                )}
 
                 <table className="table">
-                  <thead><tr><th>Aluno</th><th>Disciplina</th><th>Concluído</th><th>Progresso</th></tr></thead>
+                  <thead><tr><th>Aluno</th><th>Curso</th><th>Concluído</th><th>Progresso</th></tr></thead>
                   <tbody>
-                    {progresso.map((item) => (
+                    {visibleProgresso.map((item) => (
                       <tr key={item.id}>
                         <td>{item.aluno_nome}</td>
                         <td>{item.disciplina_title}</td>
@@ -937,24 +1253,26 @@ function PortalView({ user, onLogout }) {
             {activeModule === 'certidoes' && (
               <section className="card">
                 <h2>Certidão de conclusão</h2>
-                <form className="form-grid" onSubmit={handleEmitCertificate}>
-                  <select value={certAlunoId} onChange={(event) => setCertAlunoId(event.target.value)} required>
-                    <option value="">Aluno</option>
-                    {alunos.map((aluno) => <option key={aluno.id} value={aluno.id}>{aluno.nome}</option>)}
-                  </select>
-                  <select value={certDisciplinaId} onChange={(event) => setCertDisciplinaId(event.target.value)} required>
-                    <option value="">Disciplina</option>
-                    {disciplines.map((discipline) => <option key={discipline.id} value={discipline.id}>{discipline.title}</option>)}
-                  </select>
-                  <input type="number" step="0.01" min="0" max="10" value={notaMinima} onChange={(event) => setNotaMinima(event.target.value)} />
-                  <input type="number" step="0.01" min="0" max="100" value={progressoMinimo} onChange={(event) => setProgressoMinimo(event.target.value)} />
-                  <button className="btn" type="submit">Emitir certidão</button>
-                </form>
+                {user.role !== 'aluno' && (
+                  <form className="form-grid" onSubmit={handleEmitCertificate}>
+                    <select value={certAlunoId} onChange={(event) => setCertAlunoId(event.target.value)} required>
+                      <option value="">Aluno</option>
+                      {alunos.map((aluno) => <option key={aluno.id} value={aluno.id}>{aluno.nome}</option>)}
+                    </select>
+                    <select value={certDisciplinaId} onChange={(event) => setCertDisciplinaId(event.target.value)} required>
+                      <option value="">Curso</option>
+                      {disciplines.map((discipline) => <option key={discipline.id} value={discipline.id}>{discipline.title}</option>)}
+                    </select>
+                    <input type="number" step="0.01" min="0" max="10" value={notaMinima} onChange={(event) => setNotaMinima(event.target.value)} />
+                    <input type="number" step="0.01" min="0" max="100" value={progressoMinimo} onChange={(event) => setProgressoMinimo(event.target.value)} />
+                    <button className="btn" type="submit">Emitir certidão</button>
+                  </form>
+                )}
 
                 <table className="table">
-                  <thead><tr><th>Aluno</th><th>Disciplina</th><th>Status</th><th>Ação</th></tr></thead>
+                  <thead><tr><th>Aluno</th><th>Curso</th><th>Status</th><th>Ação</th></tr></thead>
                   <tbody>
-                    {certidoes.map((item) => (
+                    {visibleCertidoes.map((item) => (
                       <tr key={item.id}>
                         <td>{item.aluno_nome}</td>
                         <td>{item.disciplina_title}</td>

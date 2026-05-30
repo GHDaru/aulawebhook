@@ -1,9 +1,70 @@
 import { createDiscipline } from '../domain/discipline.js'
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../domain/errors.js'
-import { createLesson, formatLessonTitle, validateHtmlContent, validateLessonFilename } from '../domain/lesson.js'
+import {
+  createLesson,
+  formatLessonTitle,
+  validateHtmlContent,
+  validateLessonFilename,
+  validateLessonType,
+  validateVideoUrl,
+} from '../domain/lesson.js'
 import { canManageDiscipline, ensureManagerActor, ensureViewerActor } from '../domain/permissions.js'
 import { DEFAULT_DISCIPLINE_SLUG, DEFAULT_LESSON_SLUG, pickAvailableSlug, slugify, validateSlug } from '../domain/slug.js'
 import { buildStudentUrl } from '../infrastructure/http.js'
+
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>"'/]/g, (character) => {
+    if (character === '&') return '&amp;'
+    if (character === '<') return '&lt;'
+    if (character === '>') return '&gt;'
+    if (character === '"') return '&quot;'
+    if (character === '/') return '&#x2F;'
+    return '&#39;'
+  })
+}
+
+function resolveVideoEmbedUrl(videoUrl) {
+  const parsedUrl = new URL(videoUrl)
+
+  if (parsedUrl.hostname.includes('youtu.be')) {
+    const videoId = parsedUrl.pathname.replaceAll('/', '')
+    return videoId ? `https://www.youtube.com/embed/${encodeURIComponent(videoId)}` : videoUrl
+  }
+
+  if (parsedUrl.hostname.includes('youtube.com') && parsedUrl.searchParams.get('v')) {
+    return `https://www.youtube.com/embed/${encodeURIComponent(parsedUrl.searchParams.get('v'))}`
+  }
+
+  return videoUrl
+}
+
+function buildLessonHtml(lesson) {
+  if (lesson.lessonType !== 'video') {
+    return lesson.html
+  }
+
+  const safeTitle = escapeHtml(lesson.title)
+  const safeVideoUrl = escapeHtml(lesson.videoUrl)
+  const embedUrl = escapeHtml(resolveVideoEmbedUrl(lesson.videoUrl))
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; frame-src https://www.youtube.com/embed/ https://player.vimeo.com/video/; img-src 'self' data:; connect-src 'none'; script-src 'none'; frame-ancestors 'none';" />
+    <title>${safeTitle}</title>
+  </head>
+  <body>
+    <main>
+      <iframe src="${embedUrl}" title="${safeTitle}" allowfullscreen sandbox="allow-scripts allow-same-origin allow-presentation" referrerpolicy="strict-origin-when-cross-origin" width="960" height="540"></iframe>
+      <div>
+        <a href="${safeVideoUrl}" target="_blank" rel="noreferrer">Abrir vídeo em nova aba</a>
+      </div>
+    </main>
+  </body>
+</html>`
+}
 
 async function listDisciplines({ actor, origin, repository }) {
   ensureViewerActor(actor)
@@ -22,32 +83,34 @@ async function listDisciplines({ actor, origin, repository }) {
       slug: lesson.id,
       title: lesson.title || formatLessonTitle(lesson.id),
       order: lesson.order,
+      lessonType: lesson.lessonType || 'html',
+      videoUrl: lesson.videoUrl || null,
       studentUrl: buildStudentUrl(origin, lesson.disciplineId, lesson.id),
       uploadedAt: lesson.createdAt,
     })
     lessonsByDiscipline.set(lesson.disciplineId, items)
   })
 
-  return {
-    lessons: disciplines.map((discipline) => ({
+  const courses = disciplines.map((discipline) => ({
       id: discipline.id,
       slug: discipline.id,
       title: discipline.title,
       professorId: discipline.professorId,
       createdAt: discipline.createdAt,
       lessons: lessonsByDiscipline.get(discipline.id) || [],
-    })),
-  }
+    }))
+
+  return { courses }
 }
 
 async function registerDiscipline({ title, actor, repository }) {
-  ensureManagerActor(actor, 'Apenas professor ou admin podem cadastrar disciplinas.')
+  ensureManagerActor(actor, 'Apenas professor ou admin podem cadastrar cursos.')
 
   const baseSlug = slugify(title, DEFAULT_DISCIPLINE_SLUG)
   const disciplineId = pickAvailableSlug(baseSlug, await repository.listDisciplineSlugs(baseSlug))
 
   if (!disciplineId) {
-    throw new ConflictError('Não foi possível gerar um identificador único para a disciplina.')
+    throw new ConflictError('Não foi possível gerar um identificador único para o curso.')
   }
 
   const discipline = createDiscipline({
@@ -60,51 +123,100 @@ async function registerDiscipline({ title, actor, repository }) {
   return discipline
 }
 
-async function publishLesson({ disciplineId, filename, html, title, actor, origin, repository }) {
+async function publishLesson({ disciplineId, filename, html, title, lessonType, actor, origin, repository, videoUrl }) {
+  return saveLesson({
+    disciplineId,
+    filename,
+    html,
+    title,
+    lessonType,
+    actor,
+    origin,
+    repository,
+    videoUrl,
+  })
+}
+
+async function saveLesson({ disciplineId, lessonId = null, filename, html, title, lessonType = 'html', actor, origin, repository, videoUrl = null }) {
   ensureManagerActor(actor, 'Apenas professor ou admin podem administrar aulas.')
 
   if (!validateSlug(disciplineId)) {
-    throw new ValidationError('Identificador de disciplina inválido.')
+    throw new ValidationError('Identificador de curso inválido.')
   }
 
-  validateHtmlContent(html)
-  validateLessonFilename(filename)
+  validateLessonType(lessonType)
+
+  if (lessonType === 'html') {
+    validateHtmlContent(html)
+    validateLessonFilename(filename)
+  } else {
+    validateVideoUrl(videoUrl)
+  }
 
   const discipline = await repository.findDisciplineById(disciplineId)
   if (!discipline) {
-    throw new NotFoundError('Disciplina não encontrada.')
+    throw new NotFoundError('Curso não encontrado.')
   }
 
   if (!canManageDiscipline(actor, discipline)) {
-    throw new ForbiddenError('Você só pode administrar aulas das suas disciplinas.')
-  }
-
-  const slugSource = filename || title || DEFAULT_LESSON_SLUG
-  const baseSlug = slugify(slugSource, DEFAULT_LESSON_SLUG)
-  const lessonId = pickAvailableSlug(baseSlug, await repository.listLessonSlugs(baseSlug))
-
-  if (!lessonId) {
-    throw new ConflictError('Não foi possível gerar um identificador único para a aula.')
+    throw new ForbiddenError('Você só pode administrar aulas dos seus cursos.')
   }
 
   const trimmedTitle = typeof title === 'string' ? title.trim() : ''
+  const normalizedHtml = lessonType === 'html' ? html : ''
+  const normalizedVideoUrl = lessonType === 'video' ? String(videoUrl || '').trim() : null
+  let nextLessonId = lessonId
+
+  if (!nextLessonId) {
+    const slugSource = filename || title || DEFAULT_LESSON_SLUG
+    const baseSlug = slugify(slugSource, DEFAULT_LESSON_SLUG)
+    nextLessonId = pickAvailableSlug(baseSlug, await repository.listLessonSlugs(baseSlug))
+
+    if (!nextLessonId) {
+      throw new ConflictError('Não foi possível gerar um identificador único para a aula.')
+    }
+  }
+
   const lesson = createLesson({
-    id: lessonId,
+    id: nextLessonId,
     disciplineId,
     disciplineTitle: discipline.title,
-    html,
-    title: trimmedTitle || formatLessonTitle(baseSlug),
+    html: normalizedHtml,
+    lessonType,
+    title: trimmedTitle || formatLessonTitle(nextLessonId),
+    videoUrl: normalizedVideoUrl,
   })
 
-  lesson.order = await repository.createLesson(lesson)
+  if (lessonId) {
+    const updatedLesson = await repository.updateLesson({
+      disciplineId,
+      lessonId,
+      title: lesson.title,
+      html: lesson.html,
+      lessonType,
+      videoUrl: lesson.videoUrl,
+    })
+
+    if (!updatedLesson) {
+      throw new NotFoundError('Aula não encontrada neste curso.')
+    }
+
+    lesson.order = updatedLesson.order
+  } else {
+    lesson.order = await repository.createLesson(lesson)
+  }
 
   return {
     id: lesson.id,
     slug: lesson.id,
     disciplineId,
     disciplineTitle: discipline.title,
+    courseId: disciplineId,
+    courseTitle: discipline.title,
     title: lesson.title,
     order: lesson.order,
+    lessonType,
+    videoUrl: lesson.videoUrl,
     studentUrl: buildStudentUrl(origin, disciplineId, lesson.id),
   }
 }
@@ -120,16 +232,16 @@ async function loadLesson({ disciplineId, lessonId, origin, repository }) {
   ])
 
   if (!discipline) {
-    throw new NotFoundError('Disciplina não encontrada.')
+    throw new NotFoundError('Curso não encontrado.')
   }
 
   if (!lessons.length) {
-    throw new NotFoundError('Nenhuma aula encontrada nesta disciplina.')
+    throw new NotFoundError('Nenhuma aula encontrada neste curso.')
   }
 
   const currentIndex = lessons.findIndex((lesson) => lesson.id === lessonId)
   if (currentIndex < 0) {
-    throw new NotFoundError('Aula não encontrada nesta disciplina.')
+    throw new NotFoundError('Aula não encontrada neste curso.')
   }
 
   const current = lessons[currentIndex]
@@ -137,7 +249,7 @@ async function loadLesson({ disciplineId, lessonId, origin, repository }) {
   const next = currentIndex < lessons.length - 1 ? lessons[currentIndex + 1] : null
 
   return {
-    discipline: {
+    course: {
       id: discipline.id,
       title: discipline.title,
     },
@@ -145,8 +257,10 @@ async function loadLesson({ disciplineId, lessonId, origin, repository }) {
       id: current.id,
       title: current.title || formatLessonTitle(current.id),
       order: current.order,
+      lessonType: current.lessonType || 'html',
+      videoUrl: current.videoUrl || null,
     },
-    html: current.html,
+    html: buildLessonHtml(current),
     navigation: {
       index: currentIndex + 1,
       total: lessons.length,
@@ -182,23 +296,99 @@ async function removeContent({ contentId, actor, repository }) {
     ensureManagerActor(actor, 'Apenas professor ou admin podem administrar aulas.')
 
     if (!canManageDiscipline(actor, discipline)) {
-      throw new ForbiddenError('Você só pode administrar aulas das suas disciplinas.')
+      throw new ForbiddenError('Você só pode administrar aulas dos seus cursos.')
     }
 
     const deleted = await repository.deleteDiscipline(contentId)
     if (!deleted) {
-      throw new NotFoundError('Disciplina ou aula não encontrada.')
+      throw new NotFoundError('Curso ou aula não encontrada.')
     }
 
-    return { id: contentId, deleted: true, type: 'discipline' }
+    return { id: contentId, deleted: true, type: 'course' }
   }
 
   const deleted = await repository.deleteLegacyLesson(contentId)
   if (!deleted) {
-    throw new NotFoundError('Disciplina ou aula não encontrada.')
+    throw new NotFoundError('Curso ou aula não encontrada.')
   }
 
   return { id: contentId, deleted: true, type: 'legacy-lesson' }
+}
+
+async function updateLesson({ disciplineId, lessonId, filename, html, title, lessonType, actor, origin, repository, videoUrl }) {
+  if (!validateSlug(lessonId)) {
+    throw new ValidationError('Identificador de aula inválido.')
+  }
+
+  return saveLesson({
+    disciplineId,
+    lessonId,
+    filename,
+    html,
+    title,
+    lessonType,
+    actor,
+    origin,
+    repository,
+    videoUrl,
+  })
+}
+
+async function deleteLesson({ disciplineId, lessonId, actor, repository }) {
+  ensureManagerActor(actor, 'Apenas professor ou admin podem administrar aulas.')
+
+  if (!validateSlug(disciplineId) || !validateSlug(lessonId)) {
+    throw new ValidationError('Identificador de aula inválido.')
+  }
+
+  const discipline = await repository.findDisciplineById(disciplineId)
+  if (!discipline) {
+    throw new NotFoundError('Curso não encontrado.')
+  }
+
+  if (!canManageDiscipline(actor, discipline)) {
+    throw new ForbiddenError('Você só pode administrar aulas dos seus cursos.')
+  }
+
+  const deleted = await repository.deleteLesson(disciplineId, lessonId)
+  if (!deleted) {
+    throw new NotFoundError('Aula não encontrada neste curso.')
+  }
+
+  return { id: lessonId, deleted: true, type: 'lesson', courseId: disciplineId }
+}
+
+async function reorderLesson({ disciplineId, lessonId, direction, actor, origin, repository }) {
+  ensureManagerActor(actor, 'Apenas professor ou admin podem administrar aulas.')
+
+  if (!validateSlug(disciplineId) || !validateSlug(lessonId)) {
+    throw new ValidationError('Identificador de aula inválido.')
+  }
+
+  if (!['up', 'down'].includes(direction)) {
+    throw new ValidationError('Direção de ordenação inválida.')
+  }
+
+  const discipline = await repository.findDisciplineById(disciplineId)
+  if (!discipline) {
+    throw new NotFoundError('Curso não encontrado.')
+  }
+
+  if (!canManageDiscipline(actor, discipline)) {
+    throw new ForbiddenError('Você só pode administrar aulas dos seus cursos.')
+  }
+
+  const lesson = await repository.moveLesson({ disciplineId, lessonId, direction })
+  if (!lesson) {
+    throw new NotFoundError('Aula não encontrada neste curso.')
+  }
+
+  return {
+    id: lesson.id,
+    order: lesson.order,
+    courseId: disciplineId,
+    studentUrl: buildStudentUrl(origin, disciplineId, lesson.id),
+  }
 }
 
 function formatContentError(error, fallbackMessage) {
@@ -223,7 +413,10 @@ export {
   listDisciplines,
   loadLegacyLesson,
   loadLesson,
+  reorderLesson,
   publishLesson,
   registerDiscipline,
+  updateLesson,
+  deleteLesson,
   removeContent,
 }

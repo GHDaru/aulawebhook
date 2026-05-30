@@ -49,6 +49,9 @@ export async function initDb() {
   await sql`ALTER TABLE aulas ADD COLUMN IF NOT EXISTS disciplina_id TEXT`
   await sql`ALTER TABLE aulas ADD COLUMN IF NOT EXISTS lesson_order INTEGER`
   await sql`ALTER TABLE aulas ADD COLUMN IF NOT EXISTS title TEXT`
+  await sql`ALTER TABLE aulas ADD COLUMN IF NOT EXISTS lesson_type TEXT NOT NULL DEFAULT 'html'`
+  await sql`ALTER TABLE aulas ADD COLUMN IF NOT EXISTS video_url TEXT`
+  await sql`ALTER TABLE aulas ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`
 
   await sql`
     CREATE INDEX IF NOT EXISTS aulas_disciplina_id_idx

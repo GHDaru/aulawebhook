@@ -5,6 +5,20 @@ const MAX_LESSON_ORDER_RETRIES = 3
 async function createContentRepository() {
   const sql = await initDb()
 
+  function mapLessonRow(row) {
+    return {
+      id: row.id,
+      disciplineId: row.disciplina_id,
+      html: row.html,
+      title: row.title,
+      order: row.lesson_order,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      lessonType: row.lesson_type || 'html',
+      videoUrl: row.video_url || null,
+    }
+  }
+
   return {
     async listDisciplines({ professorId } = {}) {
       const rows = professorId
@@ -32,19 +46,13 @@ async function createContentRepository() {
       if (!disciplineIds.length) return []
 
       const rows = await sql`
-        SELECT id, disciplina_id, title, lesson_order, created_at
+        SELECT id, disciplina_id, title, lesson_order, created_at, updated_at, lesson_type, video_url
         FROM aulas
         WHERE disciplina_id = ANY(${disciplineIds})
         ORDER BY disciplina_id ASC, lesson_order ASC
       `
 
-      return rows.map((row) => ({
-        id: row.id,
-        disciplineId: row.disciplina_id,
-        title: row.title,
-        order: row.lesson_order,
-        createdAt: row.created_at,
-      }))
+      return rows.map(mapLessonRow)
     },
 
     async hasDisciplineWithId(id) {
@@ -120,13 +128,15 @@ async function createContentRepository() {
       for (let retryAttempt = 1; retryAttempt <= MAX_LESSON_ORDER_RETRIES; retryAttempt += 1) {
         try {
           const rows = await sql`
-            INSERT INTO aulas (id, html, disciplina_id, lesson_order, title)
+            INSERT INTO aulas (id, html, disciplina_id, lesson_order, title, lesson_type, video_url)
             SELECT
               ${lesson.id},
               ${lesson.html},
               ${lesson.disciplineId},
               COALESCE((SELECT MAX(lesson_order) FROM aulas WHERE disciplina_id = ${lesson.disciplineId}), 0) + 1,
-              ${lesson.title}
+              ${lesson.title},
+              ${lesson.lessonType},
+              ${lesson.videoUrl}
             RETURNING lesson_order
           `
 
@@ -149,18 +159,109 @@ async function createContentRepository() {
 
     async listLessonsByDiscipline(disciplineId) {
       const rows = await sql`
-        SELECT id, html, title, lesson_order
+        SELECT id, html, title, lesson_order, created_at, updated_at, lesson_type, video_url, disciplina_id
         FROM aulas
         WHERE disciplina_id = ${disciplineId}
         ORDER BY lesson_order ASC
       `
 
-      return rows.map((row) => ({
-        id: row.id,
-        html: row.html,
-        title: row.title,
-        order: row.lesson_order,
-      }))
+      return rows.map(mapLessonRow)
+    },
+
+    async findLessonById(disciplineId, lessonId) {
+      const rows = await sql`
+        SELECT id, html, title, lesson_order, created_at, updated_at, lesson_type, video_url, disciplina_id
+        FROM aulas
+        WHERE disciplina_id = ${disciplineId}
+          AND id = ${lessonId}
+        LIMIT 1
+      `
+
+      if (!rows.length) return null
+      return mapLessonRow(rows[0])
+    },
+
+    async updateLesson({ disciplineId, lessonId, title, html, lessonType, videoUrl }) {
+      const rows = await sql`
+        UPDATE aulas
+        SET title = ${title},
+          html = ${html},
+          lesson_type = ${lessonType},
+          video_url = ${videoUrl},
+          updated_at = NOW()
+        WHERE disciplina_id = ${disciplineId}
+          AND id = ${lessonId}
+        RETURNING id, html, title, lesson_order, created_at, updated_at, lesson_type, video_url, disciplina_id
+      `
+
+      if (!rows.length) return null
+      return mapLessonRow(rows[0])
+    },
+
+    async deleteLesson(disciplineId, lessonId) {
+      const rows = await sql`
+        DELETE FROM aulas
+        WHERE disciplina_id = ${disciplineId}
+          AND id = ${lessonId}
+        RETURNING id
+      `
+
+      return rows.length > 0
+    },
+
+    async moveLesson({ disciplineId, lessonId, direction }) {
+      const lesson = await this.findLessonById(disciplineId, lessonId)
+      if (!lesson) return null
+
+      const targetOrder = direction === 'up' ? lesson.order - 1 : lesson.order + 1
+      if (targetOrder < 1) return lesson
+
+      const maxOrderRows = await sql`
+        SELECT COALESCE(MAX(lesson_order), 0) AS max_order
+        FROM aulas
+        WHERE disciplina_id = ${disciplineId}
+      `
+
+      const maxOrder = Number(maxOrderRows[0]?.max_order ?? 0)
+      if (targetOrder > maxOrder) return lesson
+
+      const swapRows = await sql`
+        SELECT id, lesson_order
+        FROM aulas
+        WHERE disciplina_id = ${disciplineId}
+          AND lesson_order = ${targetOrder}
+        LIMIT 1
+      `
+
+      if (!swapRows.length) return lesson
+
+      await sql`
+        UPDATE aulas
+        SET lesson_order = 0,
+          updated_at = NOW()
+        WHERE disciplina_id = ${disciplineId}
+          AND id = ${lessonId}
+      `
+
+      await sql`
+        UPDATE aulas
+        SET lesson_order = ${lesson.order},
+          updated_at = NOW()
+        WHERE disciplina_id = ${disciplineId}
+          AND id = ${swapRows[0].id}
+      `
+
+      const rows = await sql`
+        UPDATE aulas
+        SET lesson_order = ${targetOrder},
+          updated_at = NOW()
+        WHERE disciplina_id = ${disciplineId}
+          AND id = ${lessonId}
+        RETURNING id, html, title, lesson_order, created_at, updated_at, lesson_type, video_url, disciplina_id
+      `
+
+      if (!rows.length) return null
+      return mapLessonRow(rows[0])
     },
 
     async findLegacyLessonById(id) {

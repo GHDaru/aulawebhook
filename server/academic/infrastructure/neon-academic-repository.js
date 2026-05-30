@@ -83,7 +83,7 @@ async function createNeonAcademicRepository() {
       ])
 
       return {
-        disciplinas: disciplinas[0]?.total || 0,
+        cursos: disciplinas[0]?.total || 0,
         aulas: aulas[0]?.total || 0,
         alunos: alunos[0]?.total || 0,
         matriculas: matriculas[0]?.total || 0,

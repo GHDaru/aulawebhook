@@ -1,6 +1,8 @@
 import { ValidationError } from './errors.js'
 
 const MAX_HTML_SIZE_BYTES = 1_500_000
+const VALID_LESSON_TYPES = new Set(['html', 'video'])
+const ALLOWED_VIDEO_HOSTS = ['youtube.com', 'www.youtube.com', 'youtu.be', 'vimeo.com', 'www.vimeo.com', 'player.vimeo.com']
 
 function formatLessonTitle(slug) {
   return slug
@@ -27,6 +29,12 @@ function validateHtmlContent(html) {
   }
 }
 
+function validateLessonType(type) {
+  if (!VALID_LESSON_TYPES.has(type)) {
+    throw new ValidationError('Tipo de conteúdo inválido.')
+  }
+}
+
 function validateLessonFilename(filename) {
   const fileName = typeof filename === 'string' ? filename.toLowerCase() : ''
   if (fileName && !fileName.endsWith('.html')) {
@@ -34,16 +42,44 @@ function validateLessonFilename(filename) {
   }
 }
 
-function createLesson({ id, disciplineId, disciplineTitle, html, order = null, title }) {
+function validateVideoUrl(videoUrl) {
+  let parsedUrl
+  try {
+    parsedUrl = new URL(String(videoUrl || ''))
+  } catch {
+    throw new ValidationError('Informe uma URL válida para o vídeo, como https://youtube.com/watch?v=...')
+  }
+
+  if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+    throw new ValidationError('O link do vídeo deve usar HTTP ou HTTPS.')
+  }
+
+  if (!ALLOWED_VIDEO_HOSTS.some((host) => parsedUrl.hostname === host)) {
+    throw new ValidationError('Use um link de vídeo do YouTube ou Vimeo.')
+  }
+}
+
+function createLesson({ id, disciplineId, disciplineTitle, html = '', lessonType = 'html', order = null, title, videoUrl = null }) {
   return {
     id,
     slug: id,
     disciplineId,
     disciplineTitle,
     html,
+    lessonType,
     order,
     title,
+    videoUrl,
   }
 }
 
-export { MAX_HTML_SIZE_BYTES, createLesson, formatLessonTitle, validateHtmlContent, validateLessonFilename }
+export {
+  MAX_HTML_SIZE_BYTES,
+  VALID_LESSON_TYPES,
+  createLesson,
+  formatLessonTitle,
+  validateHtmlContent,
+  validateLessonFilename,
+  validateLessonType,
+  validateVideoUrl,
+}
