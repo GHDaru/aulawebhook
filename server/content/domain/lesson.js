@@ -43,16 +43,19 @@ function validateLessonFilename(filename) {
 }
 
 function validateVideoUrl(videoUrl) {
+  let parsedUrl
   try {
-    const parsedUrl = new URL(String(videoUrl || ''))
-    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-      throw new ValidationError('Informe um link de vídeo válido.')
-    }
-    if (!ALLOWED_VIDEO_HOSTS.some((host) => parsedUrl.hostname === host)) {
-      throw new ValidationError('Use um link de vídeo do YouTube ou Vimeo.')
-    }
+    parsedUrl = new URL(String(videoUrl || ''))
   } catch {
     throw new ValidationError('Informe um link de vídeo válido.')
+  }
+
+  if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+    throw new ValidationError('O link do vídeo deve usar HTTP ou HTTPS.')
+  }
+
+  if (!ALLOWED_VIDEO_HOSTS.some((host) => parsedUrl.hostname === host)) {
+    throw new ValidationError('Use um link de vídeo do YouTube ou Vimeo.')
   }
 }
 

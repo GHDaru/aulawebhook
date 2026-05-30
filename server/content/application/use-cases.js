@@ -50,20 +50,13 @@ function buildLessonHtml(lesson) {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; frame-src https://www.youtube.com https://player.vimeo.com; img-src 'self' data:; connect-src 'none'; script-src 'none';" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; frame-src https://www.youtube.com https://player.vimeo.com; img-src 'self' data:; connect-src 'none'; script-src 'none';" />
     <title>${safeTitle}</title>
-    <style>
-      body { margin: 0; font-family: Inter, Arial, sans-serif; background: #f5fbf8; color: #123524; }
-      main { min-height: 100vh; display: grid; gap: 16px; place-items: center; padding: 24px; box-sizing: border-box; }
-      .frame { width: min(960px, 100%); aspect-ratio: 16 / 9; border: 0; border-radius: 20px; background: #000; box-shadow: 0 24px 50px rgba(18, 53, 36, 0.18); }
-      .actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
-      a { color: #0d6247; font-weight: 600; }
-    </style>
   </head>
   <body>
     <main>
-      <iframe class="frame" src="${embedUrl}" title="${safeTitle}" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
-      <div class="actions">
+      <iframe src="${embedUrl}" title="${safeTitle}" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" width="960" height="540"></iframe>
+      <div>
         <a href="${safeVideoUrl}" target="_blank" rel="noreferrer">Abrir vídeo em nova aba</a>
       </div>
     </main>

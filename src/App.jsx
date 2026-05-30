@@ -952,7 +952,7 @@ function PortalView({ user, onLogout }) {
                     <input
                       type="url"
                       placeholder="https://youtube.com/watch?v=..."
-                      aria-label="URL do vídeo da aula"
+                      aria-label="URL do vídeo (YouTube ou Vimeo)"
                       value={lessonVideoUrl}
                       onChange={(event) => setLessonVideoUrl(event.target.value)}
                       required
@@ -987,7 +987,7 @@ function PortalView({ user, onLogout }) {
                       <input
                         type="url"
                         placeholder="https://youtube.com/watch?v=..."
-                        aria-label="URL do vídeo da aula"
+                        aria-label="URL do vídeo (YouTube ou Vimeo)"
                         value={editingLessonVideoUrl}
                         onChange={(event) => setEditingLessonVideoUrl(event.target.value)}
                         required
